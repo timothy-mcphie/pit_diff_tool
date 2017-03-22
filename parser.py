@@ -1,7 +1,6 @@
 import xml.etree.ElementTree as ET
 import sys
 import os
-import logging
 from git import Repo
 
 class Mutation_score:
@@ -33,7 +32,6 @@ class Mutant:
         self.index = str(index)#this is the index to the first instruction on which the mutation occurs, it is specific to how ASM represents bytecode (MutationDetails.java:229)
         self.killing_test = str(killing_test)#is this causing the dupes?
         self.description = str(description) 
-        self.count = 1#used to track repeat mutants ie different indexes but essentially the same mutant...
 
     #the mutation type, and method name must be the identifying descriptors - what can change?
     def key(self):
@@ -71,18 +69,21 @@ def update_mutation_score(score, mutant):
     """
     Helper method, given mutation_score object and a Mutant, updates the score accordingly
     """
+    score.total_mutants += 1
     if mutant.status == "no_coverage":
         score.no_coverage += 1
-    elif mutant.staus == "survived":
+    elif mutant.status == "survived":
         score.survived += 1
     elif mutant.status == "killed": 
         score.killed += 1
     return
 
-def preprocess_report(report):
+def process_report(report, new=False):
     mutant_dict = {}
     root = parse_report(report) 
     score = Mutation_score(report)
+    if new:
+        mutant_list = []
     for child in root:
         """
         store from XML into an object
@@ -91,43 +92,36 @@ def preprocess_report(report):
         mutant = Mutant(child.attrib.get("detected"), child.attrib.get("status"), child[0].text, child[1].text, child[2].text, child[3].text, child[4].text, \
                 child[5].text, child[6].text, child[7].text,  child[8].text)
         if mutant.key() not in mutant_dict:
-            score.total_mutants += 1
             update_mutation_score(score, mutant)
-            mutant_dict[mutant.key()] = mutant
-        else:
-            mutant_dict[mutant.key()].count += 1
-    logger.debug("Total number of mutants in report is ", old_score.total_mutants)
+            if new:
+                mutant_list.append(mutant)
+            mutant_dict[mutant.key()] = mutant 
+    #print "Total number of mutants in report is ", score.total_mutants
+    if new:
+        return (mutant_list, score)
     return (mutant_dict, score)
 
 def get_differences(old_rep, new_rep):
-    (mutant_dict, old_score) = preprocess_report(old_rep)
-    new_root = parse_report(new_rep)
+    (mutant_dict, old_score) = process_report(old_rep)
+    (mutant_list, new_score) = process_report(new_rep, True)
+    diff_score = Mutation_score(old_rep+new_rep)
     new_mutants = []
     changed_mutants = []
-    new_score = Mutation_score(new_rep)
-    for child in new_root:
-        """
-        store from XML into an object
-        detected, status, src_file, mutated_class, mutated_method, method_description, lineno, mutator, index, killing_test, description
-        """
-        mutant = Mutant(child.attrib.get("detected"), child.attrib.get("status"), child[0].text, child[1].text, child[2].text \
-                              child[3].text, child[4].text, child[5].text, child[6].text, child[7].text,  child[8].text)
+    for mutant in mutant_list:
         key = mutant.key()
-        update_mutation_score(score, mutant)#where does this go logically?
         if key in mutant_dict:
-            old_mutant = mutant_dict[key]
             #we've seen this mutant before 
+            old_mutant = mutant_dict[key]
             if mutant.status != old_mutant.status or mutant.detected != old_mutant.detected:
-                #we have found an changed mutant, this is not part of the "delta"
+                #we have found a changed mutant, this is part of the "delta"
                 changed_mutants.append(str(mutant))
-            else:
-                #mutant is unchanged - unnecessary statement
-                continue
+                update_mutation_score(diff_score, mutant)
         else:
+            #we haven't seen this mutant before, this is part of the "delta"
             new_mutants.append(str(mutant))
-        if mutant.
+            update_mutation_score(diff_score, mutant)
     differences = new_mutants + changed_mutants
-    return differences
+    return (differences, diff_score)
 
 old_rep = "/Users/tim/Code/commons-collections/pitReports/201703191437/mutations.xml"
 new_rep = "/Users/tim/Code/commons-collections/pitReports/201703191437/mutations.xml"
@@ -135,18 +129,16 @@ usage_string = "python parser.py [old_report_path] [new_report_path]"
 
 """
 Main
-"""
 if len(sys.argv) != 3 or sys.argv[2] < 1:
   print usage_string
-  #could this be problematic for calling scripts?... Integrate into a project for stats part
+  #TODO: could this be problematic for calling scripts?... Integrate into a project for stats part
   sys.exit(1)
-logger = Logger()
-logger.setLevel(debug)
 old_rep = str(sys.argv[1])
 new_rep = str(sys.argv[2])
-#TODO: add checks for files being XML files - introduce error checking into reports
+TODO: add checks for files being XML files - introduce error checking into reports
+"""
 
-differences = get_differences(old_rep, new_rep)
+(differences, diff_score) = get_differences(old_rep, new_rep)
 for mutant in differences:
-    logger.debug(str(mutant))
-logger.debug("There were ",len(differences)," mutants")
+    print str(mutant)
+print "There were ",len(differences)," mutants"
