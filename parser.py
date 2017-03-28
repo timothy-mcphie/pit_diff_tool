@@ -15,6 +15,9 @@ class Mutation_score:
         self.survived=survived
         self.no_coverage=no_coverage
 
+    def __str__(self):
+        return "[SCORE] Name: "+self.name+" Total mutants: "+str(self.total_mutants)+" Killed: "+str(self.killed)+" No Coverage: "+str(self.no_coverage)
+
 class Mutant:
     """
     Helper class to store information of each mutation test performed by pit (this is gleamed from the pit XML report)
@@ -51,10 +54,7 @@ class Mutant:
         #+ self.index
 
     def __str__(self):
-        """
-        For output purposes, human readable
-        """
-        return "MUTANT Detected: "+self.detected+" Status: "+self.status+" Src File: "+self.src_file+" Class: "+self.mut_class+ \
+        return "[MUTANT] Detected: "+self.detected+" Status: "+self.status+" Src File: "+self.src_file+" Class: "+self.mut_class+ \
                 " Method: "+self.mut_method+" Mutator: "+self.mutator+" Description: "+self.description+" Lineno: "+self.lineno+" Killing test: "+self.killing_test
 
 def parse_report(filename):
@@ -64,6 +64,19 @@ def parse_report(filename):
     tree = ET.parse(filename)
     root = tree.getroot()
     return root
+
+def update_mutant_src(mutant, gitinfo):
+    #TODO: preprocess git information so we have a dictionary of filenames and what they have changed to.
+    """
+    Given a mutant, update its src_file if it was changed in the last commit
+    """
+    if mutant.src_file in gitinfo:
+        mutant.src_file = gitinfo[mutant.src_file]
+    return
+
+def process_git_info():
+    #TODO: have to process git information and return a dictionary
+    pass
 
 def update_mutation_score(score, mutant):
     """
@@ -78,7 +91,10 @@ def update_mutation_score(score, mutant):
         score.killed += 1
     return
 
-def process_report(report, new=False):
+def process_report(report, gitinfo, new=False):
+    """
+    Traverses a pit XML file - returns either a dictionary of unique mutants and a score object, or a list of unique mutants and a score object.
+    """
     mutant_dict = {}
     root = parse_report(report) 
     score = Mutation_score(report)
@@ -87,23 +103,31 @@ def process_report(report, new=False):
     for child in root:
         """
         store from XML into an object
-        detected, status, src_file, mutated_class, mutated_method, method_description, lineno, mutator, index, killing_test, description
+        Object tuples: detected, status, src_file, mutated_class, mutated_method, method_description, lineno, mutator, index, killing_test, description
         """
         mutant = Mutant(child.attrib.get("detected"), child.attrib.get("status"), child[0].text, child[1].text, child[2].text, child[3].text, child[4].text, \
                 child[5].text, child[6].text, child[7].text,  child[8].text)
+        if not new:
+            pass
+            #update_mutant_src(mutant, gitinfo) 
+            #TODO: update the old mutant, it won't be returned as part of the delta anyway - is this the correct ordering?
         if mutant.key() not in mutant_dict:
             update_mutation_score(score, mutant)
             if new:
                 mutant_list.append(mutant)
             mutant_dict[mutant.key()] = mutant 
-    #print "Total number of mutants in report is ", score.total_mutants
+        else:
+            #mutant has been seen before
+            continue
+    print "Total number of mutants in report is ", score.total_mutants
     if new:
         return (mutant_list, score)
     return (mutant_dict, score)
 
 def get_differences(old_rep, new_rep):
-    (mutant_dict, old_score) = process_report(old_rep)
-    (mutant_list, new_score) = process_report(new_rep, True)
+    gitinfo = process_git_info() 
+    (mutant_dict, old_score) = process_report(old_rep, gitinfo)
+    (mutant_list, new_score) = process_report(new_rep, gitinfo, True)
     diff_score = Mutation_score(old_rep+new_rep)
     new_mutants = []
     changed_mutants = []
@@ -113,7 +137,7 @@ def get_differences(old_rep, new_rep):
             #we've seen this mutant before 
             old_mutant = mutant_dict[key]
             if mutant.status != old_mutant.status or mutant.detected != old_mutant.detected:
-                #we have found a changed mutant, this is part of the "delta"
+                #a changed mutant - this is part of the delta
                 changed_mutants.append(str(mutant))
                 update_mutation_score(diff_score, mutant)
         else:
