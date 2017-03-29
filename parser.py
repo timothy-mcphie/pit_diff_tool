@@ -33,25 +33,22 @@ class Mutant:
         self.lineno = str(lineno)
         self.mutator = str(mutator)
         self.index = str(index)#this is the index to the first instruction on which the mutation occurs, it is specific to how ASM represents bytecode (MutationDetails.java:229)
-        self.killing_test = str(killing_test)#is this causing the dupes?
+        self.killing_test = str(killing_test)
         self.description = str(description) 
 
     #the mutation type, and method name must be the identifying descriptors - what can change?
     def key(self):
         """
-        Used as a key to uniquely determine a mutation. Currently uses description as part of key to uniquely verify
+        Used as a key to uniquely determine a mutation.
         """
-        return self.detected + \
-        self.status + \
-        self.src_file + \
+        return self.src_file + \
         self.mut_class + \
         self.mut_method + \
         self.method_description + \
-        self.lineno + \
         self.mutator + \
         self.description + \
         self.killing_test
-        #+ self.index
+        #+ self.lineno #+ self.index
 
     def __str__(self):
         return "[MUTANT] Detected: "+self.detected+" Status: "+self.status+" Src File: "+self.src_file+" Class: "+self.mut_class+ \
@@ -91,6 +88,18 @@ def update_mutation_score(score, mutant):
         score.killed += 1
     return
 
+def hash_lineno(src_file, lineno):
+    pass
+
+def debug_repeat(mutant, mutant_dict):
+    """
+    DEBUGGING PURPOSES ONLY
+    TODO: REMOVE
+    """
+    print str(mutant)
+    print str(mutant_dict[mutant.key()])
+    raw_input()
+
 def process_report(report, gitinfo, new=False):
     """
     Traverses a pit XML file - returns either a dictionary of unique mutants and a score object, or a list of unique mutants and a score object.
@@ -98,6 +107,7 @@ def process_report(report, gitinfo, new=False):
     mutant_dict = {}
     root = parse_report(report) 
     score = Mutation_score(report)
+    repeats = 0
     if new:
         mutant_list = []
     for child in root:
@@ -118,8 +128,10 @@ def process_report(report, gitinfo, new=False):
             mutant_dict[mutant.key()] = mutant 
         else:
             #mutant has been seen before
+            repeats += 1 
             continue
     print "Total number of mutants in report is ", score.total_mutants
+    print "Repeats ", repeats
     if new:
         return (mutant_list, score)
     return (mutant_dict, score)
@@ -160,9 +172,9 @@ if len(sys.argv) != 3 or sys.argv[2] < 1:
 old_rep = str(sys.argv[1])
 new_rep = str(sys.argv[2])
 TODO: add checks for files being XML files - introduce error checking into reports
+(differences, diff_score) = get_differences(old_rep, new_rep)
+print "DELTA ", str(diff_score)
 """
 
+#(x, y) = process_report(old_rep, None)
 (differences, diff_score) = get_differences(old_rep, new_rep)
-for mutant in differences:
-    print str(mutant)
-print "There were ",len(differences)," mutants"
