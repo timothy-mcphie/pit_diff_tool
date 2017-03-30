@@ -2,6 +2,7 @@ import xml.etree.ElementTree as ET
 import sys
 import os
 from git import Repo
+from subprocess import call
 
 class Mutation_score:
     """
@@ -35,6 +36,7 @@ class Mutant:
         self.index = str(index)#this is the index to the first instruction on which the mutation occurs, it is specific to how ASM represents bytecode (MutationDetails.java:229)
         self.killing_test = str(killing_test)
         self.description = str(description) 
+        self.line = None
 
     #the mutation type, and method name must be the identifying descriptors - what can change?
     def key(self):
@@ -48,7 +50,6 @@ class Mutant:
         self.mutator + \
         self.description + \
         self.killing_test
-        #+ self.lineno #+ self.index
 
     def __str__(self):
         return "[MUTANT] Detected: "+self.detected+" Status: "+self.status+" Src File: "+self.src_file+" Class: "+self.mut_class+ \
@@ -56,7 +57,7 @@ class Mutant:
 
 def parse_report(filename):
     """
-    returns the root tag of an XML file
+    Returns the root tag of an XML file
     """
     tree = ET.parse(filename)
     root = tree.getroot()
@@ -69,7 +70,6 @@ def update_mutant_src(mutant, gitinfo):
     """
     if mutant.src_file in gitinfo:
         mutant.src_file = gitinfo[mutant.src_file]
-    return
 
 def process_git_info():
     #TODO: have to process git information and return a dictionary
@@ -86,10 +86,19 @@ def update_mutation_score(score, mutant):
         score.survived += 1
     elif mutant.status == "killed": 
         score.killed += 1
-    return
 
-def hash_lineno(src_file, lineno):
-    pass
+def update_line(mutant):
+    """
+    Updates a mutant object with its line of source code
+    """
+    #THIS WILL BE EXPENSIVE - build an offset list? preprocess again (how long...) - what is the expensive bit - the hash? - http://stackoverflow.com/questions/620367/how-to-jump-to-a-particular-line-in-a-huge-text-file - do this every time we have to open a new file. have dict of filenames -> offsets
+    line = None
+    src_file = find path_to_src -type f -name mutant.src_file
+    with open(src_file, 'r') as f:
+        count = 0
+        while count < mutant.lineno:
+            line = f.readline()
+    mutant.line = line
 
 def debug_repeat(mutant, mutant_dict):
     """
@@ -117,19 +126,32 @@ def process_report(report, gitinfo, new=False):
         """
         mutant = Mutant(child.attrib.get("detected"), child.attrib.get("status"), child[0].text, child[1].text, child[2].text, child[3].text, child[4].text, \
                 child[5].text, child[6].text, child[7].text,  child[8].text)
+        key = mutant.key()
         if not new:
-            pass
+            #TODO: update the old mutant source files to the new ones.
             #update_mutant_src(mutant, gitinfo) 
-            #TODO: update the old mutant, it won't be returned as part of the delta anyway - is this the correct ordering?
-        if mutant.key() not in mutant_dict:
-            update_mutation_score(score, mutant)
-            if new:
-                mutant_list.append(mutant)
-            mutant_dict[mutant.key()] = mutant 
+            pass
+        if key not in mutant_dict:
+            #the mutant has not been seen
+            mutant_dict[key] = mutant 
+        elif key+mutant.lineno not in mutant_dict:
+            #the mutant has been seen before but it's on a different line number
+            current_mutant = mutant_dict[key]
+            update_line(mutant)
+            try:
+                if current_mutant.line is None:
+                    update_line(current_mutant)
+                    mutant_dict[key]= [current_mutant, mutant]
+            except:
+                mutant_dict[key].append(mutant)
+            mutant_dict[key+mutant.lineno] = mutant
         else:
-            #mutant has been seen before
+            #mutant has been seen on this line number before - only different due to ASM index
             repeats += 1 
             continue
+        update_mutation_score(score, mutant)
+        if new:
+            mutant_list.append(mutant)
     print "Total number of mutants in report is ", score.total_mutants
     print "Repeats ", repeats
     if new:
@@ -147,11 +169,16 @@ def get_differences(old_rep, new_rep):
         key = mutant.key()
         if key in mutant_dict:
             #we've seen this mutant before 
-            old_mutant = mutant_dict[key]
+            old_mutants = mutant_dict[key]
+            if old_mutants is list:
+                for old_mutant in old_mutants: 
+                    if mutant.line == old_mutant.line:
+                        break
+            old_mutant = old_mutants
             if mutant.status != old_mutant.status or mutant.detected != old_mutant.detected:
                 #a changed mutant - this is part of the delta
                 changed_mutants.append(str(mutant))
-                update_mutation_score(diff_score, mutant)
+                update_mutation_score(diff_score, mutant) 
         else:
             #we haven't seen this mutant before, this is part of the "delta"
             new_mutants.append(str(mutant))
