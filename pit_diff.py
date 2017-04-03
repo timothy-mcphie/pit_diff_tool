@@ -1,6 +1,7 @@
 import xml.etree.ElementTree as ET
 import sys
 import os
+#import git_diff_parser
 from mutation import Mutant, Mutation_score
 #from git import Repo
 from subprocess import call
@@ -20,10 +21,6 @@ def update_mutant_src(mutant, gitinfo):
     """
     if mutant.src_file in gitinfo:
         mutant.src_file = gitinfo[mutant.src_file]
-
-def process_git_info():
-    #TODO: have to process git information and return a dictionary
-    pass
 
 def update_mutation_score(score, mutant):
     """
@@ -50,6 +47,8 @@ def process_report(report, new=False):
     """
     Traverses a pit XML file - returns either a dictionary of unique mutants and a score object, or a list of unique mutants and a score object.
     """
+    #TODO: we need to update old files to their new line numbers!
+    #update_mutant(mutant, modified_files)
     mutant_dict = {}
     root = parse_report(report) 
     score = Mutation_score(report)
@@ -80,8 +79,14 @@ def process_report(report, new=False):
         return (mutant_list, score)
     return (mutant_dict, score)
 
+def update_mutant(mutant, modified_files):
+    """
+    Update a mutant in the old report to have the correct line numbers
+    """
+    pass
+
 def get_differences(old_rep, new_rep):
-    gitinfo = process_git_info() 
+    modified_files = process_git_info() 
     (mutant_dict, old_score) = process_report(old_rep)
     (mutant_list, new_score) = process_report(new_rep, True)
     diff_score = Mutation_score(old_rep+new_rep)
@@ -104,6 +109,7 @@ def get_differences(old_rep, new_rep):
     differences = new_mutants + changed_mutants
     return (differences, diff_score)
 
+#TODO: How to get the pit report names?
 old_rep = "/Users/tim/Code/commons-collections/pitReports/201703191437/mutations.xml"
 new_rep = "/Users/tim/Code/commons-collections/pitReports/201703191437/mutations.xml"
 usage_string = "python parser.py [old_report_path] [new_report_path]"
