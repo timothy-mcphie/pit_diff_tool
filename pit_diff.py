@@ -1,10 +1,9 @@
 import xml.etree.ElementTree as ET
 import sys
-import os
-#import git_diff_parser
+import parser
 from mutation import Mutant, Mutation_score
-#from git import Repo
-from subprocess import call
+
+gitinfo = {}
 
 def parse_report(filename):
     """
@@ -14,17 +13,9 @@ def parse_report(filename):
     root = tree.getroot()
     return root
 
-def update_mutant_src(mutant, gitinfo):
-    #TODO: preprocess git information so we have a dictionary of filenames and what they have changed to.
-    """
-    Given a mutant, update its src_file if it was changed in the last commit
-    """
-    if mutant.src_file in gitinfo:
-        mutant.src_file = gitinfo[mutant.src_file]
-
 def update_mutation_score(score, mutant):
     """
-    Helper method, given mutation_score object and a Mutant, updates the score accordingly
+    Helper method, given mutation_score object and a mutant, updates the score accordingly
     """
     score.total_mutants += 1
     if mutant.status == "no_coverage":
@@ -33,15 +24,6 @@ def update_mutation_score(score, mutant):
         score.survived += 1
     elif mutant.status == "killed": 
         score.killed += 1
-
-def debug_repeat(mutant, mutant_dict):
-    """
-    DEBUGGING PURPOSES ONLY
-    TODO: REMOVE
-    """
-    print str(mutant)
-    print str(mutant_dict[mutant.key()])
-    raw_input()
 
 def process_report(report, new=False):
     """
@@ -58,7 +40,7 @@ def process_report(report, new=False):
     for child in root:
         """
         store from XML into an object
-        Object tuples: detected, status, src_file, mutated_class, mutated_method, method_description, lineno, mutator, index, killing_test, description
+        Object tuples: detected, status, source_file, mutated_class, mutated_method, method_description, line_no, mutator, index, killing_test, description
         """
         mutant = Mutant(child.attrib.get("detected"), child.attrib.get("status"), child[0].text, child[1].text, child[2].text, child[3].text, child[4].text, \
                 child[5].text, child[6].text, child[7].text,  child[8].text)
@@ -73,34 +55,26 @@ def process_report(report, new=False):
         update_mutation_score(score, mutant)
         if new:
             mutant_list.append(mutant)
-    #print "Total number of mutants in report is ", score.total_mutants
-    #print "Repeats ", repeats
     if new:
         return (mutant_list, score)
     return (mutant_dict, score)
 
-def update_mutant(mutant, modified_files):
-    """
-    Update a mutant in the old report to have the correct line numbers
-    """
-    pass
-
 def get_differences(old_rep, new_rep):
-    modified_files = process_git_info() 
+    modified_files = parser.process_git_info("HEAD^", "HEAD") 
+    #TODO: - testing purposes - if using head use rev-parse to get has for use in file operations
+    #TODO: change this to two commits predetermined - check them out and run pit on them - hardcode paths into old_rep, new_rep
     (mutant_dict, old_score) = process_report(old_rep)
     (mutant_list, new_score) = process_report(new_rep, True)
     diff_score = Mutation_score(old_rep+new_rep)
     new_mutants = []
     changed_mutants = []
     for mutant in mutant_list:
-        #TODO: add logic to check if line numbers need to be updated from git
         key = mutant.key()
+        update_mutant(mutant, modified_files) 
         if key in mutant_dict:
-            #we've seen this mutant before 
-            old_mutant = mutant_dict[key]
+            old_mutant = mutant_dict[key] #we've seen this mutant before 
             if mutant.status != old_mutant.status or mutant.detected != old_mutant.detected:
-                #a changed mutant - this is part of the delta
-                changed_mutants.append(str(mutant))
+                changed_mutants.append(str(mutant)) #a changed mutant - this is part of the delta
                 update_mutation_score(diff_score, mutant) 
         else:
             #we haven't seen this mutant before, this is part of the "delta"

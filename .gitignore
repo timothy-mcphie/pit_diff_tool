@@ -1,3 +1,4 @@
 #vim swap file
 *.swp
 *.pyc
+HEAD*

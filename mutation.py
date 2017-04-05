@@ -18,14 +18,14 @@ class Mutant:
     Helper class to store information of each mutation test performed by pit (this is gleamed from the pit XML report)
     """
 
-    def __init__(self, detected, status, src_file, mut_class, mut_method, method_description, lineno, mutator, index, killing_test, description):
+    def __init__(self, detected, status, source_file, mut_class, mut_method, method_description, line_no, mutator, index, killing_test, description):
         self.detected = str(detected).lower()
         self.status = str(status).lower()
-        self.src_file = str(src_file)
+        self.source_file = str(source_file)
         self.mut_class = str(mut_class)
         self.mut_method = str(mut_method)
         self.method_description = str(method_description)
-        self.lineno = str(lineno)
+        self.line_no = str(line_no)
         self.mutator = str(mutator)
         self.index = str(index)#this is the index to the first instruction on which the mutation occurs, it is specific to how ASM represents bytecode (MutationDetails.java:229)
         self.killing_test = str(killing_test)
@@ -36,18 +36,18 @@ class Mutant:
         """
         Used as a key to uniquely determine a mutation.
         """
-        return self.src_file + \
+        return self.source_file + \
         self.mut_class + \
         self.mut_method + \
         self.method_description + \
         self.mutator + \
         self.description + \
         self.killing_test + \
-        self.lineno
+        self.line_no
 
     def __str__(self):
         """
         For human readable output of a mutant
         """
-        return "[MUTANT] Detected: "+self.detected+" Status: "+self.status+" Src File: "+self.src_file+" Class: "+self.mut_class+ \
-                " Method: "+self.mut_method+" Mutator: "+self.mutator+" Description: "+self.description+" Lineno: "+self.lineno+" Killing test: "+self.killing_test
+        return "[MUTANT] Detected: "+self.detected+" Status: "+self.status+" Src File: "+self.source_file+" Class: "+self.mut_class+ \
+                " Method: "+self.mut_method+" Mutator: "+self.mutator+" Description: "+self.description+" Lineno: "+self.line_no+" Killing test: "+self.killing_test
