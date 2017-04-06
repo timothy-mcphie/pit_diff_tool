@@ -17,17 +17,11 @@ class Mutant:
         self.description = str(description) 
         self.target_line_no = None
 
-    def __key(self):
+    def key(self):
         """
         Used as a key to uniquely determine a mutation.
         """
         return self.source_file + self.line_no + self.mutator
-
-    def __hash__(self):
-        """
-        Used in sets
-        """
-        return hash(self.__key())
 
     def __str__(self):
         """
@@ -68,15 +62,15 @@ class Mutation_score:
         self.changed = Score("[CHANGED] "+name)
         self.new = Score("[NEW] "+name)
         self.unchanged = Score("[UNCHANGED] "+name)
-        self.removed = Score("[REMOVED] "+name)
 
 class Method_score(Mutation_score):
     """
     Store scores for new/changed mutants across a method.
     """
-    def __init__(self, name):
-        self.__init__(name)
+    def __init__(self, name, src_class):
+        Mutation_score.__init__(self, name)
         self.mutants = []
+        self.src_class = src_class
 
     def update_new(self, mutant):
         self.new.update(mutant)
@@ -90,19 +84,20 @@ class Class_score(Mutation_score):
     """
     Store scores for new/changed mutants across a class.
     """
-    def __init__(self, name):
-        self.__init__(name)
-        methods = {}
+    def __init__(self, name, src_file):
+        Mutation_score.__init__(self, name)
+        self.methods = {}
+        self.src_file = src_file
 
     def update_new(self, mutant):
         if mutant.mut_method not in self.methods:
-            self.methods[mutant.mut_method] = Class_score(mutant.mut_method)
+            self.methods[mutant.mut_method] = Class_score(mutant.mut_method, self)
         self.new.update(mutant)
         self.methods[mutant.mut_method].update_new(mutant)
             
     def update_changed(self, mutant):
         if mutant.mut_method not in self.methods:
-            self.methods[mutant.mut_method] = Class_score(mutant.mut_method)
+            self.methods[mutant.mut_method] = Class_score(mutant.mut_method, self)
         self.changed.update(mutant)
         self.methods[mutant.mut_method].update_changed(mutant) 
 
@@ -110,19 +105,20 @@ class File_score(Mutation_score):
     """
     Store scores for new/changed mutants across a source file..
     """
-    def __init__(self, name):
-        self.__init__(name)
+    def __init__(self, name, report):
+        Mutation_score.__init__(self, name)
         self.classes = {}
+        self.report = report
 
     def update_new(self, mutant):
         if mutant.mut_class not in self.classes:
-            self.classes[mutant.mut_class] = Class_score(mutant.mut_class)
+            self.classes[mutant.mut_class] = Class_score(mutant.mut_class, self)
         self.new.update(mutant)
         self.classes[mutant.mut_class].update_new(mutant)
             
     def update_changed(self, mutant):
         if mutant.mut_class not in self.classes:
-            self.classes[mutant.mut_class] = Class_score(mutant.mut_class)
+            self.classes[mutant.mut_class] = Class_score(mutant.mut_class, self)
         self.changed.update(mutant)
         self.classes[mutant.mut_class].update_changed(mutant)
 
@@ -131,7 +127,7 @@ class Report_score(Mutation_score):
     Store scores for new/changed mutants across a report.
     """
     def __init__(self, name):
-        self.__init__(name)
+        Mutation_score.__init__(self, name)
         self.files = {}
 
     def add_file(self, filename):
@@ -142,12 +138,12 @@ class Report_score(Mutation_score):
 
     def update_new(self, mutant):
         if mutant.source_file not in self.files:
-            self.files[mutant.source_file] = File_score(mutant.source_file)
+            self.files[mutant.source_file] = File_score(mutant.source_file, self)
         self.new.update(mutant)
         self.files[mutant.source_file].update_new(mutant)
             
     def update_changed(self, mutant):
         if mutant.source_file not in self.files:
-            self.files[mutant.source_file] = File_score(mutant.source_file)
+            self.files[mutant.source_file] = File_score(mutant.source_file, self)
         self.changed.update(mutant)
         self.files[mutant.source_file].update_changed(mutant)

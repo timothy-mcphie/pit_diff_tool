@@ -2,7 +2,7 @@ import xml.etree.ElementTree as ET
 import sys
 import parser
 import fnmatch
-from mutation import Mutant, Mutation_score
+from mutation import Mutant, Report_score
 
 def update_mutant(mutant, modified_files):
     """
@@ -41,41 +41,40 @@ def parse_report(filename):
     root = tree.getroot()
     return root
 
-def process_report(report, commit, modified_files, report_score, new=False):
+def process_report(report):
     """
-    Traverses a pit XML report - returns a set of unique mutants and a score
+    Parse a pit XML report - returns a dict of unique mutants and a score
     """
-    mutant_set = {}
+    mutant_dict = {}
     root = parse_report(report) 
     for child in root:
-        mutant = Mutant(child.attrib.get("detected"), child.attrib.get("status"), child[0].text, child[1].text, child[2].text, child[3].text, child[4].text, \
-                child[5].text, child[6].text, child[7].text,  child[8].text)
-        if new:
-            update_mutant(mutant, modified_files) 
-        if mutant not in mutant_set:
-            mutant.add(mutant)
-    return mutant_set
+        mutant = Mutant(child.attrib.get("detected"), child.attrib.get("status"), child[0].text, child[1].text, child[2].text,\
+                child[3].text, child[4].text, child[5].text, child[6].text, child[7].text,  child[8].text)
+        if mutant.key() not in mutant_dict:
+            mutant_dict
+    return mutant_dict
 
-def get_differences(old_report, new_report, old_commit, new_commit):
-    report_score = Report_score(old_commit+new_commit)
-    #modified_files = parser.process_git_info("HEAD^", "HEAD", repo_path) 
-    old_set = process_report(old_report, old_commit, modified_files)
-    new_set = process_report(new_report, new_commit, modified_files, True)
-    #TODO: Use sets, gives us easily the new mutants, deleted mutants, changed and unchanged
-    for mutant in old_set.difference(new_set):
-        report_score.update_removed(mutant)
-
-    for mutant in mutant_list:
-        key = mutant.key()
-        if key in mutant_dict:
-            old_mutant = mutant_dict[key]
-            if mutant.status != old_mutant.status or mutant.detected != old_mutant.detected:
+def get_differences(old_report, new_report, report_name):
+    #TODO: Use sets, to get the unchanged mutants and missing mutants
+    report_score = Report_score(report_name)
+    old_mutants = process_report(old_report)
+    new_mutants = process_report(new_report)
+    for mutant in new_mutants.items():
+        #update_mutant(mutant, modified_files)
+        if mutant.key() in old_mutants:
+            if mutant.status != old_mutants[mutant.key].status or mutant.detected != old_mutants[mutant.key].detected:
                 report_score.update_changed(mutant)
+            #else:
+            #    report_score.update_unchanged(mutant)
+            del old_mutants[mutant.key]
         else:
             report_score.update_new(mutant)
+    #for mutant in old_mutants.values():
+    #    report_score.update_removed()
     return report_score
 
-def parse_report_score
+def parse_report_score():
+    pass
 
 """
 Main
@@ -97,7 +96,10 @@ new_commit = str(sys.argv[5]) #optional can just pass an old_commit to compare w
 
 #TODO: change this to two commits predetermined - check them out and run pit on them - hardcode paths into old_rep, new_rep
 #TODO: if using head use rev-parse to get hash for use in file operations
-old_rep = "/Users/tim/Code/commons-collections/pitReports/201703191437/mutations.xml"
-new_rep = "/Users/tim/Code/commons-collections/pitReports/201703191437/mutations.xml"
-report_score = get_differences(old_rep, new_rep, "HEAD^", "HEAD")
+old_rep = "/Users/tim/Code/commons-collections/pitReports/201704062043/mutations.xml"
+new_rep = "/Users/tim/Code/commons-collections/pitReports/201704062043/mutations.xml"
+#modified_files = parser.process_git_info("HEAD^", "HEAD", repo_path) 
+old_commit="HEAD"
+new_commit="HEAD^"
+report_score = get_differences(old_rep, new_rep, old_commit+"_"+new_commit)
 print "DELTA ", str(report_score)
