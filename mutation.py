@@ -43,7 +43,7 @@ class Score:
         self.no_coverage=no_coverage
 
     def __str__(self):
-        return self.name+" Total mutants: "+str(self.mutants)+" Killed: "+str(self.killed)+ \
+        return self.name+" mutants: "+str(self.mutants)+" Killed: "+str(self.killed)+ \
         " Survived: "+str(self.survived)+" No Coverage: "+str(self.no_coverage)
 
     def update(self, mutant):
@@ -92,13 +92,13 @@ class Class_score(Mutation_score):
 
     def update_new(self, mutant):
         if mutant.mut_method not in self.methods:
-            self.methods[mutant.mut_method] = Class_score(mutant.mut_method, self)
+            self.methods[mutant.mut_method] = Method_score(mutant.mut_method, self)
         self.new.update(mutant)
         self.methods[mutant.mut_method].update_new(mutant)
             
     def update_changed(self, mutant):
         if mutant.mut_method not in self.methods:
-            self.methods[mutant.mut_method] = Class_score(mutant.mut_method, self)
+            self.methods[mutant.mut_method] = Method_score(mutant.mut_method, self)
         self.changed.update(mutant)
         self.methods[mutant.mut_method].update_changed(mutant) 
 

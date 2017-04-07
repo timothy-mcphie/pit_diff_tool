@@ -1,6 +1,6 @@
 import xml.etree.ElementTree as ET
 import sys
-import git_diff_parser as parser
+import diff_parser as parser
 import fnmatch
 from mutation import Mutant, Report_score
 
@@ -51,7 +51,7 @@ def process_report(report):
         mutant = Mutant(child.attrib.get("detected"), child.attrib.get("status"), child[0].text, child[1].text, child[2].text,\
                 child[3].text, child[4].text, child[5].text, child[6].text, child[7].text,  child[8].text)
         if mutant.key() not in mutant_dict:
-            mutant_dict
+            mutant_dict[mutant.key()] = mutant
     return mutant_dict
 
 def get_differences(old_report, new_report, report_name):
@@ -59,18 +59,18 @@ def get_differences(old_report, new_report, report_name):
     report_score = Report_score(report_name)
     old_mutants = process_report(old_report)
     new_mutants = process_report(new_report)
-    for mutant in new_mutants.items():
+    for mutant in new_mutants.values():
         update_mutant(mutant, modified_files)
         if mutant.key() in old_mutants:
-            if mutant.status != old_mutants[mutant.key].status or mutant.detected != old_mutants[mutant.key].detected:
+            if mutant.status != old_mutants[mutant.key()].status or mutant.detected != old_mutants[mutant.key()].detected:
                 report_score.update_changed(mutant)
-            else:
-                report_score.update_unchanged(mutant)
-            del old_mutants[mutant.key]
+            #else:
+                #report_score.update_unchanged(mutant)
+            del old_mutants[mutant.key()]
         else:
             report_score.update_new(mutant)
-    for mutant in old_mutants.values():
-        report_score.update_removed()
+    #for mutant in old_mutants.values():
+    #    report_score.update_removed()
     return report_score
 
 def parse_report_score():
@@ -96,11 +96,11 @@ new_commit = str(sys.argv[5]) #optional can just pass an old_commit to compare w
 
 #TODO: change this to two commits predetermined - check them out and run pit on them - hardcode paths into old_rep, new_rep
 #TODO: if using head use rev-parse to get hash for use in file operations
-old_rep = "/Users/tim/Code/commons-collections/pitReports/201704062043/mutations.xml"
+old_rep = "/Users/tim/Code/commons-collections/pitReports/201704062226/mutations.xml"
 new_rep = "/Users/tim/Code/commons-collections/pitReports/201704062043/mutations.xml"
 old_commit="cfffa7138c04b971d119a5da94b9a71d610bba0a"
 new_commit="HEAD"
 repo_path="/Users/tim/Code/commons-collections"
 modified_files = parser.process_git_info(old_commit, new_commit, repo_path) 
-report_score = get_differences(old_rep, new_rep, old_commit+"_"+new_commit)
+report_score = get_differences(old_rep, new_rep, old_commit+" -> "+new_commit)
 print str(report_score)

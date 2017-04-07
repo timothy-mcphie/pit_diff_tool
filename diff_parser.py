@@ -16,7 +16,8 @@ def run_cmd(cmd_arr, stdout=None):
         if status != 0:
             print sys.stderr, "Call to ", str(cmd_arr), "terminated with non zero exit code", status
         else:
-            print sys.stderr, "Call to ", str(cmd_arr), "successful", status
+            #print sys.stderr, "Call to ", str(cmd_arr), "successful", status
+            pass
     except OSError as e:
         print sys.stderr, "Failed to call ", str(cmd_arr), "successfully", e
         print sys.stderr, "EXITING"
