@@ -27,10 +27,12 @@ class Score:
             self.killed += 1
 
 class Mutation_score:
-
+    """
+    Abstract ish class
+    """
     def __init__(self, name, parent, children=True):
-        self.changed = Score("[CHANGED] "+name)
         self.new = Score("[NEW] "+name)
+        self.changed = Score("[CHANGED] "+name)
         self.unchanged = Score("[UNCHANGED] "+name)
         self.removed = Score("[REMOVED] "+name)
         self.parent = parent
@@ -51,13 +53,16 @@ class Mutation_score:
     def update_unchanged(self, mutant):
         self.unchanged.update(mutant)
 
+    def update_removed(self, mutant):
+        self.removed.update(mutant)
+
 class Method_score(Mutation_score):
     """
     Store scores for new/changed mutants across a method.
     """
     def __init__(self, name, src_class):
         Mutation_score.__init__(self, name, src_class, False)
-        #self.mutants = [] - append this for output purposes?
+        #append mutants within methods for output purposes?
 
 class Class_score(Mutation_score):
     """
@@ -67,13 +72,17 @@ class Class_score(Mutation_score):
         Mutation_score.update_new(self, mutant)
         self.get_child_score(Method_score, mutant.mut_method).update_new(mutant)
 
+    def update_changed(self, mutant):
+        Mutation_score.update_changed(self, mutant)
+        self.get_child_score(Method_score, mutant.mut_method).update_changed(mutant)
+
     def update_unchanged(self, mutant):
         Mutation_score.update_unchanged(self, mutant)
         self.get_child_score(Method_score, mutant.mut_method).update_unchanged(mutant)
 
-    def update_changed(self, mutant):
-        Mutation_score.update_changed(self, mutant)
-        self.get_child_score(Method_score, mutant.mut_method).update_changed(mutant)
+    def update_removed(self, mutant):
+        Mutation_score.update_removed(self, mutant)
+        self.get_child_score(Method_score, mutant.mut_method).update_removed(mutant)
 
 class File_score(Mutation_score):
     """
@@ -83,30 +92,39 @@ class File_score(Mutation_score):
         Mutation_score.update_new(self, mutant)
         self.get_child_score(Class_score, mutant.mut_class).update_new(mutant)
 
+    def update_changed(self, mutant):
+        Mutation_score.update_changed(self, mutant)
+        self.get_child_score(Class_score, mutant.mut_class).update_changed(mutant)
+
     def update_unchanged(self, mutant):
         Mutation_score.update_unchanged(self, mutant)
         self.get_child_score(Class_score, mutant.mut_class).update_unchanged(mutant)
 
-    def update_changed(self, mutant):
-        Mutation_score.update_changed(self, mutant)
-        self.get_child_score(Class_score, mutant.mut_class).update_changed(mutant)
+    def update_removed(self, mutant):
+        Mutation_score.update_removed(self, mutant)
+        self.get_child_score(Method_score, mutant.mut_method).update_removed(mutant)
 
 class Report_score(Mutation_score):
     """
     Store scores for new/changed mutants across a report.
     """
+    #Can refactor so interface has attribute which can be the class type of the children
 
     def update_new(self, mutant):
         Mutation_score.update_new(self, mutant)
         self.get_child_score(File_score, mutant.source_file).update_new(mutant)
 
-    def update_unchanged(self, mutant):
-        Mutation_score.update_unchanged(self, mutant)
-        self.get_child_score(File_score, mutant.source_file).update_unchanged(mutant)
-
     def update_changed(self, mutant):
         Mutation_score.update_changed(self, mutant)
         self.get_child_score(File_score, mutant.source_file).update_changed(mutant)
 
+    def update_unchanged(self, mutant):
+        Mutation_score.update_unchanged(self, mutant)
+        self.get_child_score(File_score, mutant.source_file).update_unchanged(mutant)
+
+    def update_removed(self, mutant):
+        Mutation_score.update_removed(self, mutant)
+        self.get_child_score(Method_score, mutant.mut_method).update_removed(mutant)
+
     def __str__(self):
-        return str(self.changed)+'\n'+str(self.new)
+        return str(self.new)+'\n'+str(self.changed)+'\n'+str(self.unchanged)+'\n'+str(self.removed)

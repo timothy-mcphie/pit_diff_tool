@@ -21,7 +21,13 @@ class Mutant:
         """
         Used as a key to uniquely determine a mutation.
         """
-        return self.source_file + self.line_no + self.mutator
+        return self.source_file+self.line_no+self.mutator
+
+    def name_key(self):
+        """
+        Used to assign removed mutants to renamed methods/classes
+        """
+        return self.mut_class+' '+self.mut_method
 
     def __str__(self):
         """

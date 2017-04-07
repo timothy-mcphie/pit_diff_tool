@@ -60,18 +60,29 @@ def get_differences(old_report, new_report, report_name):
     score = Report_score(report_name, None)
     old_mutants = process_report(old_report)
     new_mutants = process_report(new_report)
+    name_map = {}
     for mutant in new_mutants.values():
         update_mutant(mutant, modified_files)
         if mutant.key() in old_mutants:
-            if mutant.status != old_mutants[mutant.key()].status or mutant.detected != old_mutants[mutant.key()].detected:
+            old_mutant = old_mutants[mutant.key()]
+            if mutant.status != old_mutant.status or mutant.detected != old_mutant.detected:
                 score.update_changed(mutant)
             else:
                 score.update_unchanged(mutant)
+            if mutant.mut_class != old_mutant.mut_class or mutant.mut_method != old_mutant.mut_method:
+                if old_mutant.name_key() not in name_map:
+                    name_map[old_mutant.name_key()] = (mutant.mut_class, mutant.mut_method)
             del old_mutants[mutant.key()]
         else:
             score.update_new(mutant)
-    #for mutant in old_mutants.values():
-    #    score.update_removed()
+    for mutant in old_mutants.values():
+        if mutant.name_key() in name_map:
+            #if removed mutant is in a method/class that was renamed, update it to belong to the new class/method name
+            print name_map[mutant.name_key()][0]
+            print name_map[mutant.name_key()][1]
+            mutant.mut_class = name_map[mutant.name_key()][0]
+            mutant.mut_method = name_map[mutant.name_key()][1]
+        score.update_removed(mutant)
     return score
 
 def parse_report_score():
