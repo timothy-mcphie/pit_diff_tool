@@ -8,7 +8,6 @@ from scores import Report_score
 def update_mutant(mutant, modified_files):
     """
     Update a mutant in the new report to have the correct line numbers by parsing the hunks in it's patchedfile
-    an old_line_no is the new_line_no - (number of lines added < new_line_no) + (number of lines deleted < new_line_no)
     """
     source_file = mutant.source_file
     if source_file not in modified_files:
@@ -16,8 +15,8 @@ def update_mutant(mutant, modified_files):
     target_to_source_dict, target_to_source_list = modified_files[source_file]
     if mutant.line_no in target_to_source_dict:
         mutant.target_line_no = mutant.line_no
-        mutant.line_no = target_to_source_dict[mutant.line_no].source_line_no 
-        #A new mutant is updated to None, will be included in the delta (no original mutant has None in its key)
+        mutant.line_no = target_to_source_dict[mutant.line_no].source_line_no
+        #if a line is new and belonged to no line in the previous snapshot, assign None as source_line_no
         return
     iterator = iter(target_to_source_list)
     line = iterator.next()
@@ -28,7 +27,6 @@ def update_mutant(mutant, modified_files):
                 break 
             line = next_line
         except StopIteration as e:
-            print "Line is after all hunks, last hunk line:", line.target_line_no, " mutant line:", mutant.line_no
             break 
     mutant.target_line_no = mutant.line_no
     mutant.line_no = mutant.line_no + (line.source_line_no - line.target_line_no) 
@@ -48,11 +46,14 @@ def process_report(report):
     """
     mutant_dict = {}
     root = parse_report(report) 
+    count = 0
     for child in root:
         mutant = Mutant(child.attrib.get("detected"), child.attrib.get("status"), child[0].text, child[1].text, child[2].text,\
                 child[3].text, child[4].text, child[5].text, child[6].text, child[7].text,  child[8].text)
         if mutant.key() not in mutant_dict:
             mutant_dict[mutant.key()] = mutant
+            count += 1
+    print "total ", count
     return mutant_dict
 
 def get_differences(old_report, new_report, report_name):
@@ -77,16 +78,16 @@ def get_differences(old_report, new_report, report_name):
             score.update_new(mutant)
     for mutant in old_mutants.values():
         if mutant.name_key() in name_map:
-            #if removed mutant is in a method/class that was renamed, update it to belong to the new class/method name
-            print name_map[mutant.name_key()][0]
-            print name_map[mutant.name_key()][1]
-            mutant.mut_class = name_map[mutant.name_key()][0]
-            mutant.mut_method = name_map[mutant.name_key()][1]
+            renamed_class = name_map[mutant.name_key()][0]
+            renamed_method = name_map[mutant.name_key()][1]
+            mutant.mut_class = renamed_class 
+            mutant.mut_method = renamed_method
         score.update_removed(mutant)
     return score
 
-def parse_report_score():
-    pass
+def parse_score(report_score):
+    for file_score in score.children.keys():
+        pass
 
 """
 Main
@@ -116,3 +117,4 @@ repo_path="/Users/tim/Code/commons-collections"
 modified_files = parser.process_git_info(old_commit, new_commit, repo_path) 
 report_score = get_differences(old_rep, new_rep, old_commit+" -> "+new_commit)
 print str(report_score)
+print "old ", report_score.total_old()

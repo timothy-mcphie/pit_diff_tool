@@ -1,45 +1,46 @@
-class Score:
+class Score(object):
     """
     Store results of a set of mutants
     """
 
-    def __init__(self, name, mutants=0, killed=0, survived=0, no_coverage=0):
-        self.name=name
+    def __init__(self, score_type, mutants=0, killed=0, survived=0, no_coverage=0):
+        self.score_type=score_type
         self.mutants=mutants
         self.killed=killed
         self.survived=survived
         self.no_coverage=no_coverage
 
     def __str__(self):
-        return self.name+" mutants: "+str(self.mutants)+" Killed: "+str(self.killed)+ \
-        " Survived: "+str(self.survived)+" No Coverage: "+str(self.no_coverage)
+        return self.score_type+' mutants: '+str(self.mutants)+' Killed: '+str(self.killed)+ \
+        ' Survived: '+str(self.survived)+' No Coverage: '+str(self.no_coverage)
 
     def update(self, mutant):
         """
         Update score given a mutant
         """
         self.mutants += 1
-        if mutant.status == "no_coverage":
+        if mutant.status == 'no_coverage':
             self.no_coverage += 1
-        elif mutant.status == "survived":
+        elif mutant.status == 'survived':
             self.survived += 1
-        elif mutant.status == "killed": 
+        elif mutant.status == 'killed': 
             self.killed += 1
 
-class Mutation_score:
+class Mutation_score(object):
     """
     Abstract ish class
     """
     def __init__(self, name, parent, children=True):
-        self.new = Score("[NEW] "+name)
-        self.changed = Score("[CHANGED] "+name)
-        self.unchanged = Score("[UNCHANGED] "+name)
-        self.removed = Score("[REMOVED] "+name)
+        self.name = str(name)
+        self.new = Score('[NEW]')
+        self.changed = Score('[CHANGED]')
+        self.unchanged = Score('[UNCHANGED]')
+        self.removed = Score('[REMOVED]')
         self.parent = parent
         if children:
-            self.children = {}
+            self.children = {} #switch to using list of tuples if memory low
 
-    def get_child_score(self, Class, key):
+    def get_child(self, Class, key):
         if key not in self.children:
             self.children[key] = Class(key, self)
         return self.children[key]
@@ -56,6 +57,9 @@ class Mutation_score:
     def update_removed(self, mutant):
         self.removed.update(mutant)
 
+    def __str__(self):
+        return type(self).__name__+' '+self.name+'\n'+str(self.new)+'\n'+str(self.changed)+'\n'+str(self.unchanged)+'\n'+str(self.removed)
+
 class Method_score(Mutation_score):
     """
     Store scores for new/changed mutants across a method.
@@ -70,19 +74,19 @@ class Class_score(Mutation_score):
     """
     def update_new(self, mutant):
         Mutation_score.update_new(self, mutant)
-        self.get_child_score(Method_score, mutant.mut_method).update_new(mutant)
+        self.get_child(Method_score, mutant.mut_method).update_new(mutant)
 
     def update_changed(self, mutant):
         Mutation_score.update_changed(self, mutant)
-        self.get_child_score(Method_score, mutant.mut_method).update_changed(mutant)
+        self.get_child(Method_score, mutant.mut_method).update_changed(mutant)
 
     def update_unchanged(self, mutant):
         Mutation_score.update_unchanged(self, mutant)
-        self.get_child_score(Method_score, mutant.mut_method).update_unchanged(mutant)
+        self.get_child(Method_score, mutant.mut_method).update_unchanged(mutant)
 
     def update_removed(self, mutant):
         Mutation_score.update_removed(self, mutant)
-        self.get_child_score(Method_score, mutant.mut_method).update_removed(mutant)
+        self.get_child(Method_score, mutant.mut_method).update_removed(mutant)
 
 class File_score(Mutation_score):
     """
@@ -90,19 +94,19 @@ class File_score(Mutation_score):
     """
     def update_new(self, mutant):
         Mutation_score.update_new(self, mutant)
-        self.get_child_score(Class_score, mutant.mut_class).update_new(mutant)
+        self.get_child(Class_score, mutant.mut_class).update_new(mutant)
 
     def update_changed(self, mutant):
         Mutation_score.update_changed(self, mutant)
-        self.get_child_score(Class_score, mutant.mut_class).update_changed(mutant)
+        self.get_child(Class_score, mutant.mut_class).update_changed(mutant)
 
     def update_unchanged(self, mutant):
         Mutation_score.update_unchanged(self, mutant)
-        self.get_child_score(Class_score, mutant.mut_class).update_unchanged(mutant)
+        self.get_child(Class_score, mutant.mut_class).update_unchanged(mutant)
 
     def update_removed(self, mutant):
         Mutation_score.update_removed(self, mutant)
-        self.get_child_score(Method_score, mutant.mut_method).update_removed(mutant)
+        self.get_child(Method_score, mutant.mut_method).update_removed(mutant)
 
 class Report_score(Mutation_score):
     """
@@ -112,19 +116,19 @@ class Report_score(Mutation_score):
 
     def update_new(self, mutant):
         Mutation_score.update_new(self, mutant)
-        self.get_child_score(File_score, mutant.source_file).update_new(mutant)
+        self.get_child(File_score, mutant.source_file).update_new(mutant)
 
     def update_changed(self, mutant):
         Mutation_score.update_changed(self, mutant)
-        self.get_child_score(File_score, mutant.source_file).update_changed(mutant)
+        self.get_child(File_score, mutant.source_file).update_changed(mutant)
 
     def update_unchanged(self, mutant):
         Mutation_score.update_unchanged(self, mutant)
-        self.get_child_score(File_score, mutant.source_file).update_unchanged(mutant)
+        self.get_child(File_score, mutant.source_file).update_unchanged(mutant)
 
     def update_removed(self, mutant):
         Mutation_score.update_removed(self, mutant)
-        self.get_child_score(Method_score, mutant.mut_method).update_removed(mutant)
+        self.get_child(Method_score, mutant.mut_method).update_removed(mutant)
 
-    def __str__(self):
-        return str(self.new)+'\n'+str(self.changed)+'\n'+str(self.unchanged)+'\n'+str(self.removed)
+    def total_old(self):
+        return self.changed.mutants + self.unchanged.mutants + self.removed.mutants

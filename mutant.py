@@ -1,4 +1,4 @@
-class Mutant:
+class Mutant(object):
     """
     Helper class to store information of each mutation test performed by pit (this is gleamed from the pit XML report)
     """
