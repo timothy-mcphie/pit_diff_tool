@@ -1,6 +1,6 @@
 import xml.etree.ElementTree as ET
 import sys
-import parser
+import git_diff_parser as parser
 import fnmatch
 from mutation import Mutant, Report_score
 
@@ -60,17 +60,17 @@ def get_differences(old_report, new_report, report_name):
     old_mutants = process_report(old_report)
     new_mutants = process_report(new_report)
     for mutant in new_mutants.items():
-        #update_mutant(mutant, modified_files)
+        update_mutant(mutant, modified_files)
         if mutant.key() in old_mutants:
             if mutant.status != old_mutants[mutant.key].status or mutant.detected != old_mutants[mutant.key].detected:
                 report_score.update_changed(mutant)
-            #else:
-            #    report_score.update_unchanged(mutant)
+            else:
+                report_score.update_unchanged(mutant)
             del old_mutants[mutant.key]
         else:
             report_score.update_new(mutant)
-    #for mutant in old_mutants.values():
-    #    report_score.update_removed()
+    for mutant in old_mutants.values():
+        report_score.update_removed()
     return report_score
 
 def parse_report_score():
@@ -98,8 +98,9 @@ new_commit = str(sys.argv[5]) #optional can just pass an old_commit to compare w
 #TODO: if using head use rev-parse to get hash for use in file operations
 old_rep = "/Users/tim/Code/commons-collections/pitReports/201704062043/mutations.xml"
 new_rep = "/Users/tim/Code/commons-collections/pitReports/201704062043/mutations.xml"
-#modified_files = parser.process_git_info("HEAD^", "HEAD", repo_path) 
-old_commit="HEAD"
-new_commit="HEAD^"
+old_commit="cfffa7138c04b971d119a5da94b9a71d610bba0a"
+new_commit="HEAD"
+repo_path="/Users/tim/Code/commons-collections"
+modified_files = parser.process_git_info(old_commit, new_commit, repo_path) 
 report_score = get_differences(old_rep, new_rep, old_commit+"_"+new_commit)
-print "DELTA ", str(report_score)
+print str(report_score)

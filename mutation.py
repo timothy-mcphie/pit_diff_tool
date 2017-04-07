@@ -43,7 +43,8 @@ class Score:
         self.no_coverage=no_coverage
 
     def __str__(self):
-        return self.name+" Total mutants: "+str(self.mutants)+" Killed: "+str(self.killed)+" No Coverage: "+str(self.no_coverage)
+        return self.name+" Total mutants: "+str(self.mutants)+" Killed: "+str(self.killed)+ \
+        " Survived: "+str(self.survived)+" No Coverage: "+str(self.no_coverage)
 
     def update(self, mutant):
         """
@@ -147,3 +148,6 @@ class Report_score(Mutation_score):
             self.files[mutant.source_file] = File_score(mutant.source_file, self)
         self.changed.update(mutant)
         self.files[mutant.source_file].update_changed(mutant)
+
+    def __str__(self):
+        return str(self.changed)+'\n'+str(self.new)

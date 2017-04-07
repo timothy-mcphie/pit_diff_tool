@@ -30,7 +30,7 @@ def load_diff(commit1, commit2, repo_path):
     Get a list of changed files between two commits
     """
     diff_file = str(commit1)+"diff"+str(commit2)
-    run_cmd(["git", "--git-dir="+str(repo_path), "diff", commit1, commit2], diff_file)
+    run_cmd(["git", "-C", repo_path, "diff", commit1, commit2], diff_file)
     patchset = PatchSet.from_filename(diff_file)
     run_cmd(["rm", diff_file])
     return patchset
