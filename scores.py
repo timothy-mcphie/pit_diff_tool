@@ -114,21 +114,26 @@ class Report_score(Mutation_score):
     """
     #Can refactor so interface has attribute which can be the class type of the children
 
+    def get_filename(self, mutant):
+        if mutant.target_file is not None:
+            return mutant.target_file #use the new snapshot filename as the key
+        return mutant.source_file
+
     def update_new(self, mutant):
         Mutation_score.update_new(self, mutant)
-        self.get_child(File_score, mutant.source_file).update_new(mutant)
+        self.get_child(File_score, self.get_filename(mutant)).update_new(mutant)
 
     def update_changed(self, mutant):
         Mutation_score.update_changed(self, mutant)
-        self.get_child(File_score, mutant.source_file).update_changed(mutant)
+        self.get_child(File_score, self.get_filename(mutant)).update_changed(mutant)
 
     def update_unchanged(self, mutant):
         Mutation_score.update_unchanged(self, mutant)
-        self.get_child(File_score, mutant.source_file).update_unchanged(mutant)
+        self.get_child(File_score, self.get_filename(mutant)).update_unchanged(mutant)
 
     def update_removed(self, mutant):
         Mutation_score.update_removed(self, mutant)
-        self.get_child(Method_score, mutant.mut_method).update_removed(mutant)
+        self.get_child(Method_score, self.get_filename(mutant)).update_removed(mutant)
 
     def total_old(self):
         return self.changed.mutants + self.unchanged.mutants + self.removed.mutants

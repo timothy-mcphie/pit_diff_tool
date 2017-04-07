@@ -1,4 +1,5 @@
 import sys
+import os
 import fnmatch
 from unidiff import PatchSet
 from subprocess import call
@@ -36,6 +37,9 @@ def load_diff(commit1, commit2, repo_path):
     run_cmd(["rm", diff_file])
     return patchset
 
+def remove_path(filepath):
+    return os.path.basename(filepath)
+
 def process_git_info(commit1, commit2, repo_path):
     """
     Get a dictionary giving a mapping of lines in changed files to their original lines. commit1 is old, commit2 is new
@@ -43,13 +47,16 @@ def process_git_info(commit1, commit2, repo_path):
     patchset = load_diff(commit1, commit2, repo_path)
     modified_files = {}
     for patched_file in patchset:
-        if patched_file.is_added_file or patched_file.is_removed_file or not fnmatch.fnmatch(patched_file.source_file, "*.java"):#hardcoded java only compatability
+        if patched_file.is_added_file or patched_file.is_removed_file or not fnmatch.fnmatch(patched_file.source_file, "*.java"):
+            #hardcoded java only compatability
             continue
         target_to_source_dict = {}
         target_to_source_list = []
+        target_file = remove_path(patched_file.target_file)
+        source_file = remove_path(patched_file.source_file)
         for hunk in patched_file:
             for line in hunk.target_lines():
                 target_to_source_dict[line.target_line_no] = line
             target_to_source_list.append(line)
-        modified_files[patched_file.source_file] = (target_to_source_dict, target_to_source_list)
+        modified_files[target_file] = ((target_to_source_dict, target_to_source_list), source_file)
     return modified_files 

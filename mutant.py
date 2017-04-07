@@ -10,18 +10,19 @@ class Mutant(object):
         self.mut_class = str(mut_class) # the class mutated
         self.mut_method = str(mut_method) # the method mutated
         self.method_description = str(method_description)
-        self.line_no = str(line_no)
+        self.line_no = int(line_no)
         self.mutator = str(mutator)
         self.index = str(index)#index to the first instruction where the mutation occurs, specific to ASM/bytecode representation (pit/MutationDetails.java:229)
         self.killing_test = str(killing_test)
         self.description = str(description) 
         self.target_line_no = None
+        self.target_file = None
 
     def key(self):
         """
         Used as a key to uniquely determine a mutation.
         """
-        return self.source_file+self.line_no+self.mutator
+        return self.source_file+str(self.line_no)+self.mutator
 
     def name_key(self):
         """
@@ -34,4 +35,4 @@ class Mutant(object):
         For human readable output of a mutant
         """
         return "[MUTANT] Detected: "+self.detected+" Status: "+self.status+" Src File: "+self.source_file+" Class: "+self.mut_class+ \
-                " Method: "+self.mut_method+" Mutator: "+self.mutator+" Description: "+self.description+" Lineno: "+self.line_no+" Killing test: "+self.killing_test
+                " Method: "+self.mut_method+" Mutator: "+self.mutator+" Description: "+self.description+" Lineno: "+str(self.line_no)+" Killing test: "+self.killing_test
