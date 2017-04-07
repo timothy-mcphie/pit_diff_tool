@@ -2,7 +2,8 @@ import xml.etree.ElementTree as ET
 import sys
 import diff_parser as parser
 import fnmatch
-from mutation import Mutant, Report_score
+from mutant import Mutant
+from scores import Report_score
 
 def update_mutant(mutant, modified_files):
     """
@@ -56,22 +57,22 @@ def process_report(report):
 
 def get_differences(old_report, new_report, report_name):
     #TODO: Use sets, to get the unchanged mutants and missing mutants
-    report_score = Report_score(report_name)
+    score = Report_score(report_name, None)
     old_mutants = process_report(old_report)
     new_mutants = process_report(new_report)
     for mutant in new_mutants.values():
         update_mutant(mutant, modified_files)
         if mutant.key() in old_mutants:
             if mutant.status != old_mutants[mutant.key()].status or mutant.detected != old_mutants[mutant.key()].detected:
-                report_score.update_changed(mutant)
-            #else:
-                #report_score.update_unchanged(mutant)
+                score.update_changed(mutant)
+            else:
+                score.update_unchanged(mutant)
             del old_mutants[mutant.key()]
         else:
-            report_score.update_new(mutant)
+            score.update_new(mutant)
     #for mutant in old_mutants.values():
-    #    report_score.update_removed()
-    return report_score
+    #    score.update_removed()
+    return score
 
 def parse_report_score():
     pass
