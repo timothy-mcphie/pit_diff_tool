@@ -1,6 +1,10 @@
 # pit_diff_tool
 Get the difference of two runs of pitest
 
-Use pypy for 100% speedup 
+Uses pypy - cuts runtime by half
 
-Depends on unidiff lib - clone and run pypy setup.py install
+Depends on modified unidiff lib supporting renames clone and do
+
+```
+pypy setup.py install
+```
