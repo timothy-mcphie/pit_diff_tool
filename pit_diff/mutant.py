@@ -28,7 +28,7 @@ class Mutant(object):
         """
         Used to assign removed mutants to renamed methods/classes
         """
-        return self.mut_class+' '+self.mut_method
+        return self.mut_class+" "+self.mut_method
 
     def __str__(self):
         """

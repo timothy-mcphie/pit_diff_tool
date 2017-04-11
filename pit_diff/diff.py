@@ -1,18 +1,27 @@
 import xml.etree.ElementTree as ET
 import sys
-import git_diff_parser as parser
+import cmd
 import fnmatch
 from mutant import Mutant
 from scores import Report_score
 
 def check_report(report):
     if not fnmatch.fnmatch(report, "*.xml"): 
-        print sys.stderr, "Report ", old_rep, " is not named as an XML file exiting"
+        print "[PIT_DIFF] Report ", old_rep, " is not named as an XML file exiting"
         sys.exit(1)
+
+def parse_report(filename):
+    """
+    Returns the root tag of an XML file
+    """
+    #TODO: Add error handling
+    tree = ET.parse(filename)
+    root = tree.getroot()
+    return root
 
 def update_mutant(mutant, modified_files):
     """
-    Update a mutant in the new report to have the correct line numbers by parsing the hunks in it's patchedfile
+    Update a mutant in the new report to have the line numbers and file name it had in the previous commit
     """
     source_file = mutant.source_file
     if source_file not in modified_files:
@@ -21,15 +30,14 @@ def update_mutant(mutant, modified_files):
     ((target_to_source_dict, target_to_source_list), target_file) = modified_files[source_file]
 
     if target_file != source_file:
-        print "file rename"
         #if the file was renamed, assign the mutant the old file name
         mutant.target_file = target_file
         mutant.source_file = source_file
 
+    mutant.target_line_no = mutant.line_no
     if mutant.line_no in target_to_source_dict:
-        mutant.target_line_no = mutant.line_no
+        #a new line with no line number in the previous snapshot, gets None as source_line_no
         mutant.line_no = target_to_source_dict[mutant.line_no].source_line_no
-        #if a line is new and belonged to no line in the previous snapshot, assign None as source_line_no
         return
 
     iterator = iter(target_to_source_list)
@@ -42,17 +50,7 @@ def update_mutant(mutant, modified_files):
             line = next_line
         except StopIteration as e:
             break 
-    mutant.target_line_no = mutant.line_no
     mutant.line_no = mutant.line_no + (line.source_line_no - line.target_line_no) 
-
-def parse_report(filename):
-    """
-    Returns the root tag of an XML file
-    """
-    #TODO: Add error handling
-    tree = ET.parse(filename)
-    root = tree.getroot()
-    return root
 
 def process_report(report):
     """
@@ -76,6 +74,7 @@ def get_differences(old_report, new_report, report_name, modified_files):
     old_mutants = process_report(old_report)
     new_mutants = process_report(new_report)
     name_map = {}
+
     for mutant in new_mutants.values():
         update_mutant(mutant, modified_files)
         if mutant.key() in old_mutants:
@@ -92,28 +91,45 @@ def get_differences(old_report, new_report, report_name, modified_files):
             del old_mutants[mutant.key()]
         else:
             score.update_new(mutant)
-    for mutant in old_mutants.values():
-        if mutant.name_key() in name_map:
-            renamed_class = name_map[mutant.name_key()][0]
-            renamed_method = name_map[mutant.name_key()][1]
-            mutant.mut_class = renamed_class 
-            mutant.mut_method = renamed_method
-        if mutant.source_file in name_map:
-            mutant.source_file = name_map[mutant.source_file]
-        score.update_removed(mutant)
+
+    for old_mutant in old_mutants.values():
+        if old_mutant.name_key() in name_map:
+            renamed_class = name_map[old_mutant.name_key()][0]
+            renamed_method = name_map[old_mutant.name_key()][1]
+            old_mutant.mut_class = renamed_class 
+            old_mutant.mut_method = renamed_method
+        if old_mutant.source_file in name_map:
+            old_mutant.source_file = name_map[old_mutant.source_file]
+        score.update_removed(old_mutant)
     return score
 
-def parse_score(score):
+def parse_report_score(report_score, csv=False):
     """
     Parse score and write to csv
     """
-    pass
+    if csv:
+        #csv module set up code here
+        pass
 
-def get_pit_diff(old_commit, new_commit, repo_path, old_rep, new_rep):
+    delta = []
+    #output only the changed mutants and their locations
+    for file_score in report_score.children.values():
+        for class_score in file_score.children.values():
+            for method_score in class_score.children.values(): 
+                if method_score.changed.mutants > 0:
+                    delta += (method_score.changed_mutants)
+                    #TODO: use a lambda to print the str of each changed mutant each method score
+
+    return delta
+
+def get_pit_diff(old_commit, new_commit, repo_path, old_rep, new_rep, modified_files):
     check_report(old_rep)
     check_report(new_rep)
-    if parser.run_cmd(["git", "-C", repo_path, "status"], "/dev/null") != 0:
-        print sys.stderr, "Cannot query the Git repo at ", repo_path, " exiting"
-        sys.exit(1)
-    modified_files = parser.process_git_info(old_commit, new_commit, repo_path) 
-    return get_differences(old_rep, new_rep, old_commit+" -> "+new_commit, modified_files)
+    if not modified_files:
+        print "[PIT_DIFF] Modified files translation dictionary not initialised, cannot update mutants"
+        return None
+    #TODO: Move repo check into sputnik program - is it necessary?
+    #if not cmd.is_repo(repo_path):
+    #    return None
+    report_score = get_differences(old_rep, new_rep, old_commit+" -> "+new_commit, modified_files)
+    return report_score
