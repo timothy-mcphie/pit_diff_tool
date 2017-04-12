@@ -1,4 +1,5 @@
 import sys
+import os
 from pit_diff import cmd, diff, git_diff, scores
 
 def output_score(score): 
@@ -14,11 +15,16 @@ def checkout_commit(repo, commit):
 
 def ant_compile(repo):
     #TODO: Move away from hardcoded
-    if cmd.run_cmd(["ant", "-f", repo+"build.xml", "test"]) != 0:
-        #Is -Dbasedir=repo needed?
+    #Use pushd/popd or cd, cd - can't use subprocess
+    print "[PIT_EXP] repo is ", repo
+    try:
+        os.chdir(repo)
+    except OSError as e:
+        print "Could not cd to repo ", repo, " ", e
+        sys.exit(1)
+    if cmd.run_cmd(["ant", "test"]) != 0:
         return False
     return True
-
 
 def get_pit_report(repo, commit):
     """
@@ -32,12 +38,14 @@ def get_pit_report(repo, commit):
         return None
 
     print "[PIT_EXP] Running pit on ", commit
+    #TODO: What if the classpath changes - build structure/dependencies change? Extract from ant/mvn?
     classpath = "/Users/tim/Code/commons-collections/lib/pitest-command-line-1.1.11.jar:\
 /Users/tim/Code/commons-collections/lib/pitest-1.1.11.jar:\
 /Users/tim/Code/commons-collections/lib/junit-4.11.jar:\
 /Users/tim/Code/commons-collections/lib/easymock-3.2.jar:\
 /Users/tim/Code/commons-collections/lib/hamcrest-core-1.3.jar:\
-/Users/tim/Code/commons-collections/target/classes:target/tests"
+/Users/tim/Code/commons-collections/target/classes:\
+/Users/tim/Code/commons-collections/target/tests"
     report_dir = "/Users/tim/Google Drive/University/University Work - 4th Year/COMPM091 Final Year Individual Project/Code/pit_tool/pitReports/"
     target_classes = target_tests = "org.apache.commons.collections4.*"
     src_dir = "/Users/tim/Code/commons-collections/src/"
@@ -51,7 +59,7 @@ def get_pit_report(repo, commit):
     return report_path
 
 
-def main(commit, repo):
+def main(repo, commit):
     """
     Iterate backwards over commits in a repo running pit
     """ 
@@ -65,9 +73,11 @@ def main(commit, repo):
         sys.exit(0)
     new_report = get_pit_report(repo, commit)
     new_commit = old_commit = commit #old_commit is the historically older snapshot of the project
+
     failed_streak = 0
     while True:
         old_commit = cmd.get_commit_hash(repo, old_commit+"^")
+        #get parent commit
         if old_commit is None:
             print "[PIT_EXP] End of commit history, exiting"
             sys.exit(0)
@@ -75,12 +85,13 @@ def main(commit, repo):
         modified_files = git_diff.process_git_info(old_commit, new_commit, repo)
         if not modified_files:
             print "[PIT_EXP] Skipping commits with no java source files edited"
-            #if source code is unedited in commits, new_report isn't updated, mutation score won't change
-            #if code hasn't changed, arguably the most recent version will be most stable
+            #if commit has no src code edits the old_report mutation score won't change
+            #new_report will stay the same commit arguably the most recent version will be most stable
             continue
         old_report = get_pit_report(repo, old_commit)
         if old_report is None:
-            #build or pit report failed
+            #TODO:If build or pit failed and there are child commits with non source edits that were skipped
+            #Try these children - could have build file edits which fix the build
             failed_streak += 1
             if failed_streak >= 10:
                 print "[PIT_EXP] Couldn't build 10 consecutive commits exiting"
@@ -95,4 +106,4 @@ def main(commit, repo):
 
 #TODO: Take command line args
 #TODO: Default to taking out HEAD of trunk
-main("HEAD", "/Users/tim/Code/commons-collections/")
+main("/Users/tim/Code/commons-collections/", "HEAD")
