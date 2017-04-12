@@ -51,11 +51,9 @@ class Mutation_score(object):
             self.children[key] = Class(key, self)
         return self.children[key]
 
-    @property
     def total_new(self):
         return self.new.mutants+self.changed.mutants+self.unchanged.mutants
 
-    @property
     def total_old(self):
         return self.removed.mutants+self.changed.mutants+self.unchanged.mutants
 

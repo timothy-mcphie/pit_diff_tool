@@ -14,7 +14,7 @@ def checkout_commit(repo, commit):
 
 def ant_compile(repo):
     #TODO: Move away from hardcoded
-    if cmd.run_cmd(["ant", "-f", repo+"build.xml", "compile", "compile.tests"], "/dev/null") != 0:
+    if cmd.run_cmd(["ant", "-f", repo+"build.xml", "test"]) != 0:
         #Is -Dbasedir=repo needed?
         return False
     return True
@@ -94,4 +94,5 @@ def main(commit, repo):
         new_commit = old_commit
 
 #TODO: Take command line args
+#TODO: Default to taking out HEAD of trunk
 main("HEAD", "/Users/tim/Code/commons-collections/")
