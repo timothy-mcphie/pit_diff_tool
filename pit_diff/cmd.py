@@ -26,17 +26,23 @@ def run_cmd(cmd_arr, stdout=None, stderr=None):
         fd.close() 
     return status
 
-def rename_report(report_path, commit):
-    if report_path is None or not report_path:
-        print "[CMD] report_path was invalid"
-        return None
-    new_report_path = os.path.dirname(report_path)+"/"+commit+".xml"
+def get_report_name(report_dir, commit):
     print "[CMD] new report path is", new_report_path
-    status = run_cmd(["mv", report_path, new_report_path])
+    return report_dir+"/"+commit+".xml"
+
+def rename_file(old_path, new_path):
+    if old_path is None or not old_path:
+        print "[CMD] old report_path was invalid ", old_path
+        return None
+    elif new_path is None or not new_path:
+        print "[CMD] new report_path was invalid ", new_path
+        return None
+    status = run_cmd(["mv", old_path, new_path])
     if status != 0:
-        print "[CMD] Failed to rename the report path to mutation report ", commit
+        print "[CMD] Failed to rename the ", old_path, " to ", new_path
         sys.exit(1)
-    return new_report_path
+    print "[CMD] Rename successful from ", old_path, " to ", new_path
+    return new_path
 
 def get_commit_hash(repo, commit):
     """
@@ -68,7 +74,6 @@ def run_pit(repo, classpath, report_dir, target_classes, target_tests, src_dir, 
     """
     Runs pit on a given git repository, returns a path to a uniquely named mutation report
     Edit classpath, src_dir, targetClasses, reportDir, to match those of project.
-    reportDir must terminate in "/"
     """
     status = run_cmd(["java", "-cp", classpath, \
             "org.pitest.mutationtest.commandline.MutationCoverageReport", \
@@ -81,5 +86,5 @@ def run_pit(repo, classpath, report_dir, target_classes, target_tests, src_dir, 
             "--timestampedReports", "false"], "/dev/null")
     if status != 0:
         return None
-    return report_dir+"mutations.xml"
+    return report_dir+"/mutations.xml"
 

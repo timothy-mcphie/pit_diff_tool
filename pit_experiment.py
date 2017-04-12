@@ -1,11 +1,15 @@
 import sys
 import os
+import csv
 from pit_diff import cmd, diff, git_diff, scores
+#TODO: Use a logging function instead of prints - can ditch the [FNAME] tag
 
-def output_score(score): 
+def output_score(score, report_dir): 
+    output_file = report_dir+"/output.csv"
     delta = diff.parse_report_score(score)
-    for mut in score:
-        print "[PIT_EXP] CHANGED ", str(d)
+    with open output_file as f:
+        for mut in score:
+            print "[PIT_EXP] CHANGED ", str(d)
 
 def checkout_commit(repo, commit):
     if cmd.run_cmd(["git", "-C", repo, "checkout", commit], "/dev/null") != 0:
@@ -15,21 +19,24 @@ def checkout_commit(repo, commit):
 
 def ant_compile(repo):
     #TODO: Move away from hardcoded
-    #Use pushd/popd or cd, cd - can't use subprocess
     print "[PIT_EXP] repo is ", repo
     try:
         os.chdir(repo)
     except OSError as e:
-        print "Could not cd to repo ", repo, " ", e
+        print "[PIT_EXP] Could not cd to repo ", repo, " ", e
         sys.exit(1)
-    if cmd.run_cmd(["ant", "test"]) != 0:
+    if cmd.run_cmd(["ant", "test"], "/dev/null") != 0:
         return False
     return True
 
-def get_pit_report(repo, commit):
+def get_pit_report(repo, commit, report_dir):
     """
     Checkout, build and generate pit report for a repo snapshot
     """
+    report_path = cmd.get_report_name(report_dir, commit)
+    if os.path.isfile(report_path):
+        print "[PIT_EXP] Found report previously generated at ", report_path
+        return report_path
     if not checkout_commit(repo, commit): 
         print "[PIT_EXP] Failed to checkout commit ", commit, " cannot attempt to build"
         sys.exit(1) 
@@ -46,7 +53,6 @@ def get_pit_report(repo, commit):
 /Users/tim/Code/commons-collections/lib/hamcrest-core-1.3.jar:\
 /Users/tim/Code/commons-collections/target/classes:\
 /Users/tim/Code/commons-collections/target/tests"
-    report_dir = "/Users/tim/Google Drive/University/University Work - 4th Year/COMPM091 Final Year Individual Project/Code/pit_tool/pitReports/"
     target_classes = target_tests = "org.apache.commons.collections4.*"
     src_dir = "/Users/tim/Code/commons-collections/src/"
     threads = "4"
@@ -54,12 +60,13 @@ def get_pit_report(repo, commit):
     if report_path is None:
         print "[PIT_EXP] Pit report of ", commit, " failed to generate"
         return None
-    report_path = cmd.rename_report(report_path, commit)
-    print "[PIT_EXP] Report is at ", report_path
+    report_path = cmd.rename_report(report_dir+"/mutations.xml", report_path)
+    if report_path is None:
+        print "[PIT_EXP] Failed to complete rename"
     return report_path
 
 
-def main(repo, commit):
+def main(repo, commit, report_dir):
     """
     Iterate backwards over commits in a repo running pit
     """ 
@@ -71,7 +78,7 @@ def main(repo, commit):
     if commit is None:
         print "[PIT_EXP] Failed to get hash of supplied commit ", commit
         sys.exit(0)
-    new_report = get_pit_report(repo, commit)
+    new_report = get_pit_report(repo, commit, report_dir)
     new_commit = old_commit = commit #old_commit is the historically older snapshot of the project
 
     failed_streak = 0
@@ -88,7 +95,7 @@ def main(repo, commit):
             #if commit has no src code edits the old_report mutation score won't change
             #new_report will stay the same commit arguably the most recent version will be most stable
             continue
-        old_report = get_pit_report(repo, old_commit)
+        old_report = get_pit_report(repo, old_commit, report_dir)
         if old_report is None:
             #TODO:If build or pit failed and there are child commits with non source edits that were skipped
             #Try these children - could have build file edits which fix the build
@@ -100,10 +107,13 @@ def main(repo, commit):
         failed_streak = 0
         print "[PIT_EXP] Extracting diff of ", old_commit, " and ", new_commit
         delta = diff.get_pit_diff(old_commit, new_commit, repo, old_report, new_report, modified_files)
-        output_score(delta)
+        output_score(delta, report_dir)
         new_report = old_report
         new_commit = old_commit
 
 #TODO: Take command line args
 #TODO: Default to taking out HEAD of trunk
-main("/Users/tim/Code/commons-collections/", "HEAD")
+repo = "/Users/tim/Code/commons-collections/"
+commit = "HEAD"
+report_dir = "/Users/tim/Google Drive/University/University Work - 4th Year/COMPM091 Final Year Individual Project/Code/pit_tool/pitReports/"
+main(repo, commit, report_dir)
