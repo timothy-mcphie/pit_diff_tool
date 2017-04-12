@@ -1,4 +1,6 @@
 #vim swap file
 *.swp
 *.pyc
+~/
+#whoops
 HEAD*

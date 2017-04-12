@@ -122,14 +122,14 @@ def parse_report_score(report_score, csv=False):
 
     return delta
 
-def get_pit_diff(old_commit, new_commit, repo_path, old_rep, new_rep, modified_files):
-    check_report(old_rep)
-    check_report(new_rep)
+def get_pit_diff(old_commit, new_commit, repo, old_report, new_report, modified_files):
+    check_report(old_report)
+    check_report(new_report)
     if not modified_files:
         print "[PIT_DIFF] Modified files translation dictionary not initialised, cannot update mutants"
         return None
     #TODO: Move repo check into sputnik program - is it necessary?
-    #if not cmd.is_repo(repo_path):
+    #if not cmd.is_repo(repo):
     #    return None
-    report_score = get_differences(old_rep, new_rep, old_commit+" -> "+new_commit, modified_files)
+    report_score = get_differences(old_report, new_report, old_commit+" -> "+new_commit, modified_files)
     return report_score

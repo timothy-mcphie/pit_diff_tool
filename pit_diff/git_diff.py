@@ -4,21 +4,21 @@ import cmd
 from unidiff import PatchSet
 #TODO:use gitpython
 
-def load_diff(commit1, commit2, repo_path):
+def load_diff(commit1, commit2, repo):
     """
     Get a list of changed files between two commits
     """
     diff_file = str(commit1)+"diff"+str(commit2)
-    cmd.run_cmd(["git", "-C", repo_path, "diff", commit1, commit2], diff_file)
+    cmd.run_cmd(["git", "-C", repo, "diff", commit1, commit2], diff_file)
     patchset = PatchSet.from_filename(diff_file)
     cmd.run_cmd(["rm", diff_file])
     return patchset
 
-def process_git_info(commit1, commit2, repo_path):
+def process_git_info(commit1, commit2, repo):
     """
     Get a dictionary giving a mapping of lines in changed files to their original lines. commit1 is old, commit2 is new
     """
-    patchset = load_diff(commit1, commit2, repo_path)
+    patchset = load_diff(commit1, commit2, repo)
     modified_files = {}
     for patched_file in patchset:
         if patched_file.is_added_file or patched_file.is_removed_file or not fnmatch.fnmatch(patched_file.source_file, "*.java"):
