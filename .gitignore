@@ -1,6 +1,7 @@
 #vim swap file
 *.swp
 *.pyc
+.DS_Store
 ~/
 #whoops
 HEAD*
