@@ -1,7 +1,7 @@
-#pit_diff
+# pit_diff
 Package for generating pit reports and evaluating changes between them
 
-##Files
+## Files
 
 `cmd.py`
 
