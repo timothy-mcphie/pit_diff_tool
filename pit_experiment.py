@@ -4,6 +4,9 @@ import csv
 from pit_diff import cmd, diff, git_diff, scores
 #TODO: Use a logging function instead of prints - can ditch the [FNAME] tag
 
+global MAX_CONSECUTIVE_BUILD_FAILS
+MAX_CONSECUTIVE_BUILD_FAILS = 500
+
 def output_score(score, report_dir): 
     """
     output_file = report_dir+"/output.csv"
@@ -13,16 +16,15 @@ def output_score(score, report_dir):
             print "[PIT_EXP] CHANGED ", str(d)
     """
 
-def copy_build_files(repo, build_files):
-    if cmd.run_cmd(["cp", build_files+"/build.xml", repo]):
-        print "[PIT_EXP] Failed to copy build.xml"
-        return False
+def copy_build_files(repo):
+    build_files = repo+"/../build_files-commons-collections"
+    print "[PIT_EXP] Copying files from ", build_files, " to ", repo
     if cmd.run_cmd(["cp", build_files+"/default.properties", repo]):
         print "[PIT_EXP] Failed to copy default.properties"
         return False
-    if cmd.run_cmd(["mkdir", repo+"/lib"]):
-        print "[PIT_EXP] Failed to make lib dir for dependencies"
-        return False
+    #if cmd.run_cmd(["mkdir", repo+"/lib"]):
+    #    print "[PIT_EXP] Failed to make lib dir for dependencies"
+    #    return False
     if cmd.run_cmd(["cp", "-a", build_files+"/lib", repo+"/lib"]):
         print "[PIT_EXP] Failed to copy dependencies to lib"
         return False
@@ -42,7 +44,7 @@ def ant_compile(repo):
     except OSError as e:
         print "[PIT_EXP] Could not cd to repo ", repo, " ", e
         sys.exit(1)
-    if cmd.run_cmd(["ant", "test"], "/dev/null") != 0:
+    if cmd.run_cmd(["ant", "test"]) != 0:
         return False
     return True
 
@@ -56,6 +58,9 @@ def get_pit_report(repo, commit, report_dir):
         return report_path
     if not checkout_commit(repo, commit): 
         print "[PIT_EXP] Failed to checkout commit ", commit, " cannot attempt to build"
+        sys.exit(1) 
+    if not copy_build_files(repo):
+        print "[PIT_EXP] Could not set up build environment in ", repo, " exiting"
         sys.exit(1) 
     if not ant_compile(repo):
         print "[PIT_EXP] Build of ", commit, " failed - skipping this snapshot"
@@ -115,8 +120,8 @@ def main(repo, commit, report_dir):
             #TODO:If build or pit failed and there are child commits with non source edits that were skipped
             #Try these children - could have build file edits which fix the build
             failed_streak += 1
-            if failed_streak >= 10:
-                print "[PIT_EXP] Couldn't build 10 consecutive commits exiting"
+            if failed_streak >= MAX_CONSECUTIVE_BUILD_FAILS:
+                print "[PIT_EXP] Couldn't build ", MAX_CONSECUTIVE_BUILD_FAILS, " consecutive commits exiting"
                 sys.exit(1)
             continue
         failed_streak = 0
@@ -126,8 +131,7 @@ def main(repo, commit, report_dir):
         #new_report = old_report
         #new_commit = old_commit
 
-#TODO: Take command line args
-#TODO: Default to taking out HEAD of trunk
+#TODO: Take command line args - if no commit is given, default to HEAD
 repo = "/Users/tim/Code/commons-collections/"
 commit = "HEAD"
 report_dir = "/Users/tim/Google Drive/University/University Work - 4th Year/COMPM091 Final Year Individual Project/Code/pit_tool/pitReports/"
