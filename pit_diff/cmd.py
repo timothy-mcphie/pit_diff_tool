@@ -27,8 +27,9 @@ def run_cmd(cmd_arr, stdout=None, stderr=None):
     return status
 
 def get_report_name(report_dir, commit):
-    print "[CMD] new report path is", new_report_path
-    return report_dir+"/"+commit+".xml"
+    report_path = report_dir+"/"+commit+".xml"
+    print "[CMD] report path is", report_path
+    return report_path
 
 def rename_file(old_path, new_path):
     if old_path is None or not old_path:

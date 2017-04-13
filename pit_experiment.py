@@ -5,14 +5,31 @@ from pit_diff import cmd, diff, git_diff, scores
 #TODO: Use a logging function instead of prints - can ditch the [FNAME] tag
 
 def output_score(score, report_dir): 
+    """
     output_file = report_dir+"/output.csv"
     delta = diff.parse_report_score(score)
     with open output_file as f:
         for mut in score:
             print "[PIT_EXP] CHANGED ", str(d)
+    """
+
+def copy_build_files(repo, build_files):
+    if cmd.run_cmd(["cp", build_files+"/build.xml", repo]):
+        print "[PIT_EXP] Failed to copy build.xml"
+        return False
+    if cmd.run_cmd(["cp", build_files+"/default.properties", repo]):
+        print "[PIT_EXP] Failed to copy default.properties"
+        return False
+    if cmd.run_cmd(["mkdir", repo+"/lib"]):
+        print "[PIT_EXP] Failed to make lib dir for dependencies"
+        return False
+    if cmd.run_cmd(["cp", "-a", build_files+"/lib", repo+"/lib"]):
+        print "[PIT_EXP] Failed to copy dependencies to lib"
+        return False
+    return True
 
 def checkout_commit(repo, commit):
-    if cmd.run_cmd(["git", "-C", repo, "checkout", commit], "/dev/null") != 0:
+    if cmd.run_cmd(["git", "-C", repo, "checkout", commit, "-f"], "/dev/null") != 0:
         print "[PIT_EXP] Cannot check out commit ", commit, " in repo ", repo
         return False
     return True 
@@ -56,15 +73,13 @@ def get_pit_report(repo, commit, report_dir):
     target_classes = target_tests = "org.apache.commons.collections4.*"
     src_dir = "/Users/tim/Code/commons-collections/src/"
     threads = "4"
-    report_path = cmd.run_pit(repo, classpath, report_dir, target_classes, target_tests, src_dir, threads)
-    if report_path is None:
+    if cmd.run_pit(repo, classpath, report_dir, target_classes, target_tests, src_dir, threads) is None:
         print "[PIT_EXP] Pit report of ", commit, " failed to generate"
         return None
-    report_path = cmd.rename_report(report_dir+"/mutations.xml", report_path)
+    report_path = cmd.rename_file(report_dir+"/mutations.xml", report_path)
     if report_path is None:
         print "[PIT_EXP] Failed to complete rename"
     return report_path
-
 
 def main(repo, commit, report_dir):
     """
@@ -105,11 +120,11 @@ def main(repo, commit, report_dir):
                 sys.exit(1)
             continue
         failed_streak = 0
-        print "[PIT_EXP] Extracting diff of ", old_commit, " and ", new_commit
-        delta = diff.get_pit_diff(old_commit, new_commit, repo, old_report, new_report, modified_files)
-        output_score(delta, report_dir)
-        new_report = old_report
-        new_commit = old_commit
+        #print "[PIT_EXP] Extracting diff of ", old_commit, " and ", new_commit
+        #delta = diff.get_pit_diff(old_commit, new_commit, repo, old_report, new_report, modified_files)
+        #output_score(delta, report_dir)
+        #new_report = old_report
+        #new_commit = old_commit
 
 #TODO: Take command line args
 #TODO: Default to taking out HEAD of trunk
