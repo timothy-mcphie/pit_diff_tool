@@ -68,15 +68,15 @@ def get_pit_report(repo, commit, report_dir):
 
     print "[PIT_EXP] Running pit on ", commit
     #TODO: What if the classpath changes - build structure/dependencies change? Extract from ant/mvn?
-    classpath = "/Users/tim/Code/commons-collections/lib/pitest-command-line-1.1.11.jar:\
-/Users/tim/Code/commons-collections/lib/pitest-1.1.11.jar:\
-/Users/tim/Code/commons-collections/lib/junit-4.11.jar:\
-/Users/tim/Code/commons-collections/lib/easymock-3.2.jar:\
-/Users/tim/Code/commons-collections/lib/hamcrest-core-1.3.jar:\
-/Users/tim/Code/commons-collections/target/classes:\
-/Users/tim/Code/commons-collections/target/tests"
+    classpath = repo+"/lib/pitest-command-line-1.1.11.jar:"+\
+repo+"/lib/pitest-1.1.11.jar:"+\
+repo+"/lib/junit-4.11.jar:"+\
+repo+"/lib/easymock-3.2.jar:"+\
+repo+"/lib/hamcrest-core-1.3.jar:"+\
+repo+"/target/classes:"+\
+repo+"/target/tests"
     target_classes = target_tests = "org.apache.commons.collections4.*"
-    src_dir = "/Users/tim/Code/commons-collections/src/"
+    src_dir = repo+"/src/"
     threads = "4"
     if cmd.run_pit(repo, classpath, report_dir, target_classes, target_tests, src_dir, threads) is None:
         print "[PIT_EXP] Pit report of ", commit, " failed to generate"
