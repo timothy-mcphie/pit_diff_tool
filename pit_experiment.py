@@ -122,7 +122,7 @@ def get_mvn_classpath(repo):
     return cp.strip()
 
 
-def get_pit_report(repo, commit, report_dir):
+def get_pit_report(repo, commit, report_dir, pit_filter):
     """
     Checkout, build and generate pit report for a repo snapshot
     """
@@ -154,7 +154,7 @@ repo+"/lib/junit-4.11.jar:"+\
 repo+"/target/classes:"+\
 repo+"/target/test-classes:"+\
 mvn_classpath 
-    target_classes = target_tests = "org.apache.commons.collections4.*"
+    target_classes = target_tests = pit_filter
     src_dir = repo+"/src"
     threads = "4"
     if cmd.run_pit(repo, classpath, report_dir, target_classes, target_tests, src_dir, threads) is None:
@@ -165,7 +165,7 @@ mvn_classpath
         print "[PIT_EXP] Failed to complete rename"
     return report_path
 
-def main(repo, commit, report_dir):
+def main(repo, commit, report_dir, pit_filter):
     """
     Iterate backwards over commits in a repo running pit
     """ 
@@ -177,7 +177,7 @@ def main(repo, commit, report_dir):
     if commit is None:
         print "[PIT_EXP] Failed to get hash of supplied commit ", commit
         sys.exit(0)
-    new_report = get_pit_report(repo, commit, report_dir)
+    new_report = get_pit_report(repo, commit, report_dir, pit_filter)
     new_commit = old_commit = commit #old_commit is the historically older snapshot of the project
 
     failed_streak = 0
@@ -194,7 +194,7 @@ def main(repo, commit, report_dir):
             #if commit has no src code edits the old_report mutation score won't change
             #new_report will stay the same commit arguably the most recent version will be most stable
             continue
-        old_report = get_pit_report(repo, old_commit, report_dir)
+        old_report = get_pit_report(repo, old_commit, report_dir, pit_filter)
         if old_report is None:
             #TODO:If build or pit failed and there are child commits with non source edits that were skipped
             #Try these children - could have build file edits which fix the build
@@ -211,7 +211,11 @@ def main(repo, commit, report_dir):
         #new_commit = old_commit
 
 #TODO: Take command line args - if no commit is given, default to HEAD
-repo = "/Users/tim/Code/commons-collections"
+#repo = "/Users/tim/Code/commons-collections"
+#pit_filter="org.apache.commons.collections4.*"
+#report_dir = "/Users/tim/Code/pitReports/cc4"
+pit_filter="joda.org.time*"
+report_dir = "/Users/tim/Code/pitReports/joda"
+repo = "/Users/tim/Code/joda-time"
 commit = "HEAD"
-report_dir = "/Users/tim/Code/pitReports"
-main(repo, commit, report_dir)
+main(repo, commit, report_dir, pit_filter)
