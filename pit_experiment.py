@@ -5,7 +5,7 @@ from pit_diff import cmd, diff, git_diff, scores
 #TODO: Use a logging function instead of prints - can ditch the [FNAME] tag
 
 global MAX_CONSECUTIVE_BUILD_FAILS
-MAX_CONSECUTIVE_BUILD_FAILS = 500
+MAX_CONSECUTIVE_BUILD_FAILS = 15
 
 def output_score(score, report_dir): 
     """
@@ -19,9 +19,6 @@ def output_score(score, report_dir):
 def copy_build_files(repo):
     build_files = repo+"/../build_files-commons-collections"
     print "[PIT_EXP] Copying files from ", build_files, " to ", repo
-    if cmd.run_cmd(["cp", build_files+"/default.properties", repo]):
-        print "[PIT_EXP] Failed to copy default.properties"
-        return False
     #if cmd.run_cmd(["mkdir", repo+"/lib"]):
     #    print "[PIT_EXP] Failed to make lib dir for dependencies"
     #    return False
@@ -36,7 +33,7 @@ def checkout_commit(repo, commit):
         return False
     return True 
 
-def ant_compile(repo):
+def mvn_compile(repo):
     #TODO: Move away from hardcoded
     print "[PIT_EXP] repo is ", repo
     try:
@@ -44,9 +41,28 @@ def ant_compile(repo):
     except OSError as e:
         print "[PIT_EXP] Could not cd to repo ", repo, " ", e
         sys.exit(1)
-    if cmd.run_cmd(["ant", "test"]) != 0:
+    if cmd.run_cmd(["mvn", "test"]) != 0:
         return False
     return True
+
+def get_mvn_classpath(repo):
+    
+    cp_file = repo+"/cp.txt"
+    if cmd.run_cmd(["mvn", "dependency:build-classpath", "-Dmdep.outputFile="+cp_file]) != 0:
+        print "[PIT_EXP] Failed to extract classpath from maven"
+        return None
+    cp = None
+    try:
+        with open(cp_file, "r") as f:
+            cp = f.readline()
+    except:
+        print "[PIT_EXP]couldn't perform open on ", cp_file
+        return None
+    if cmd.run_cmd(["rm", cp_file]) != 0: 
+        print "[PIT_EXP] Failed to delete remaining classpath file from maven"
+        return None
+    return cp.strip()
+
 
 def get_pit_report(repo, commit, report_dir):
     """
@@ -62,21 +78,22 @@ def get_pit_report(repo, commit, report_dir):
     if not copy_build_files(repo):
         print "[PIT_EXP] Could not set up build environment in ", repo, " exiting"
         sys.exit(1) 
-    if not ant_compile(repo):
+    if not mvn_compile(repo):
         print "[PIT_EXP] Build of ", commit, " failed - skipping this snapshot"
         return None
-
+    print "[PIT_EXP] getting maven classpath of ", commit
+    mvn_classpath = get_mvn_classpath(repo)
+    if mvn_classpath is None:
+        print "[PIT_EXP] failed to get classpath from maven for snapshot ", commit, " - skipping this snapshot"
+        return None 
     print "[PIT_EXP] Running pit on ", commit
-    #TODO: What if the classpath changes - build structure/dependencies change? Extract from ant/mvn?
     classpath = repo+"/lib/pitest-command-line-1.1.11.jar:"+\
 repo+"/lib/pitest-1.1.11.jar:"+\
-repo+"/lib/junit-4.11.jar:"+\
-repo+"/lib/easymock-3.2.jar:"+\
-repo+"/lib/hamcrest-core-1.3.jar:"+\
 repo+"/target/classes:"+\
-repo+"/target/tests"
+repo+"/target/test-classes:"+\
+mvn_classpath 
     target_classes = target_tests = "org.apache.commons.collections4.*"
-    src_dir = repo+"/src/"
+    src_dir = repo+"/src"
     threads = "4"
     if cmd.run_pit(repo, classpath, report_dir, target_classes, target_tests, src_dir, threads) is None:
         print "[PIT_EXP] Pit report of ", commit, " failed to generate"
@@ -132,7 +149,7 @@ def main(repo, commit, report_dir):
         #new_commit = old_commit
 
 #TODO: Take command line args - if no commit is given, default to HEAD
-repo = "/Users/tim/Code/commons-collections/"
+repo = "/Users/tim/Code/commons-collections"
 commit = "HEAD"
-report_dir = "/Users/tim/Google Drive/University/University Work - 4th Year/COMPM091 Final Year Individual Project/Code/pit_tool/pitReports/"
+report_dir = "/Users/tim/Google Drive/University/University Work - 4th Year/COMPM091 Final Year Individual Project/Code/pit_tool/pitReports"
 main(repo, commit, report_dir)
