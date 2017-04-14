@@ -41,7 +41,7 @@ def mvn_compile(repo):
     except OSError as e:
         print "[PIT_EXP] Could not cd to repo ", repo, " ", e
         sys.exit(1)
-    if cmd.run_cmd(["mvn", "test"]) != 0:
+    if cmd.run_cmd(["mvn", "-T", "4", "test"]) != 0:
         return False
     return True
 
