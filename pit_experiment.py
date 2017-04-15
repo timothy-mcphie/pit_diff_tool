@@ -7,15 +7,32 @@ from pit_diff import cmd, diff, git_diff, scores as s
 global MAX_CONSECUTIVE_BUILD_FAILS
 MAX_CONSECUTIVE_BUILD_FAILS = 15
 
-def add_scores(old, new):
+def parse_report_score(report_score):
+    """
+    Get two lists of directly changed mutants (those in modified files) 
+    and the indirectly changed mutants (those in unmodified files) 
+    """ 
+    modified = s.Mutation_score("modified")
+    unmodified = s.Mutation_score("unmodified")
+    for file_score in report_score.children.values(): 
+        if file_score.modified:
+            modified.add_changed(file_score.changed)
+        else:
+            unmodified.add_changed(file_score.changed)
+    return (modified, unmodified)
 
-
-def output_score(score, report_dir): 
+def output_score(total_modified, total_unmodified, new_commit, report_score, report_dir): 
+    """
+    Output and append to a csv file the change a new_commit introduces to the mutation score
+    """
     output_file = report_dir+"/output.csv"
-    (modified, unmodified) = diff.parse_report_score(score)
-    with open output_file as f:
-        for mut in score:
-            print "[PIT_EXP] CHANGED ", str(d)
+    (modified, unmodified) = parse_report_score(report_score)
+    total_modified.add_changed(modified.changed) 
+    total_unmodified.add_changed(unmodified.changed) 
+    with open(output_file, "a+") as f:
+        f.write(new_commit+","file_score.csv_changed()+"\n")
+        f.write("modified,"modified.csv_changed()+"\n")        
+        f.write("unmodified,"unmodified.csv_changed()+"\n")        
 
 def copy_build_files(repo):
     build_files = repo+"/../build_files-commons-collections"
@@ -122,6 +139,8 @@ def main(repo, commit, report_dir, pit_filter):
     if commit is None:
         print "[PIT_EXP] Failed to get hash of supplied commit ", commit
         sys.exit(0)
+    total_modified = s.Mutation_score("total_modified")
+    total_unmodified = s.Mutation_score("total_unmodified")
     new_report = get_pit_report(repo, commit, report_dir, pit_filter)
     new_commit = old_commit = commit #old_commit is the historically older snapshot of the project
 
@@ -129,10 +148,9 @@ def main(repo, commit, report_dir, pit_filter):
     while True:
         old_commit = cmd.get_commit_hash(repo, old_commit+"^")
         #get parent commit
-        if old_commit == "d9f33d8ae9b288c5021fd688ff296c0d053a644e" or old_commit is None:
-            old_commit = "634066471f2941eddfcca3ed2a62c9d254cabccb"
-            #print "[PIT_EXP] End of commit history, exiting"
-            #sys.exit(0)
+        if old_commit is None:
+            print "[PIT_EXP] End of commit history, exiting"
+            break
         print "[PIT_EXP] Parsing diff of commits ", old_commit, " to ", new_commit
         modified_files = git_diff.process_git_info(old_commit, new_commit, repo)
         #TODO: Show what files are modified
@@ -148,14 +166,19 @@ def main(repo, commit, report_dir, pit_filter):
             failed_streak += 1
             if failed_streak >= MAX_CONSECUTIVE_BUILD_FAILS:
                 print "[PIT_EXP] Couldn't build ", MAX_CONSECUTIVE_BUILD_FAILS, " consecutive commits exiting"
-                sys.exit(1)
+                break
             continue
         failed_streak = 0
         #print "[PIT_EXP] Extracting diff of ", old_commit, " and ", new_commit
-        #delta = diff.get_pit_diff(old_commit, new_commit, repo, old_report, new_report, modified_files)
-        #output_score(delta, report_dir)
+        #report_score = diff.get_pit_diff(old_commit, new_commit, repo, old_report, new_report, modified_files)
+        #report_score is an object containing information on the mutation score delta
+        #output_score(total_modified, total_unmodified, new_commit, report_score, report_dir)
         #new_report = old_report
         new_commit = old_commit
+    print "[PIT_EXP] ", total_modified.str_changed()
+    print "[PIT_EXP] ", total_unmodified.str_changed()
+    total_unmodified.add_changed(total_modified)
+    print "[PIT_EXP] TOTAL", total_unmodified.str_changed()
 
 #TODO: Take command line args - if no commit is given, default to HEAD
 #repo = "/Users/tim/Code/commons-collections"

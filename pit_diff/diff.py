@@ -150,6 +150,7 @@ def parse_changed_mutants(report_score, csv=False):
 
     if csv:
         with open(report_score.name+".csv", "w") as f:
+            f.write(report_score.str_changed()+"\n")
             if modified:
                 f.write("MODIFIED FILES"+"\n")
                 for mutant in modified:
@@ -159,22 +160,6 @@ def parse_changed_mutants(report_score, csv=False):
                 for mutant in unmodified:
                     f.write(str(mutant)+"\n")
 
-    return (modified, unmodified)
-
-
-def parse_report_score(report_score, csv=False):
-    """
-    Get two lists of directly changed mutants (those in modified files) 
-    and the indirectly changed mutants (those in unmodified files) 
-    """
-
-    modified = []
-    unmodified = []
-    for file_score in report_score.children.values():
-        if file_score.modified:
-            modified.append((file_score.name, file_score.str_changed()))
-        else:
-            unmodified.append((file_score.name, file_score.str_changed()))
     return (modified, unmodified)
 
 def get_pit_diff(old_commit, new_commit, repo, old_report, new_report, modified_files, show_all=False):

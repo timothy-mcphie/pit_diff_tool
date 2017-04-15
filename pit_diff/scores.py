@@ -63,15 +63,15 @@ class Mutation_score(object):
     def update_new(self, mutant):
         self.new.update(mutant) 
 
-    def update_changed(self, old_mutant, mutant):
-        #TODO: add check to see if indices are equal - there has been no change.
-        self.changed[old_mutant.get_index()*6+mutant.get_index()] += 1
-
     def update_unchanged(self, mutant):
         self.unchanged.update(mutant)
 
     def update_removed(self, mutant):
         self.removed.update(mutant)
+
+    def update_changed(self, old_mutant, mutant):
+        #TODO: add check to see if indices are equal - there has been no change.
+        self.changed[old_mutant.get_index()*6+mutant.get_index()] += 1
 
     def str_row_changed(self, start):
         return " no_coverage " + str(self.changed[start]) +\
@@ -83,13 +83,17 @@ class Mutation_score(object):
 
     def str_changed(self):
         #TODO: create property method in mutant class returns a status given an index use in loop to build string - neater 
-        return "[CHANGED] "+"\n"+\
-        "no_coverage TO"+self.str_row_changed(0)+"\n"+\
-        "survived TO"+self.str_row_changed(6)+"\n"+\
-        "killed TO"+self.str_row_changed(12)+"\n"+\
-        "timed_out TO"+self.str_row_changed(18)+"\n"+\
-        "memory_error TO"+self.str_row_changed(24)+"\n"+\
-        "run_error TO"+self.str_row_changed(30)+"\n"
+        return self.name + " " + "\n" + \
+        "no_coverage TO" + self.str_row_changed(0) + "\n" + \
+        "survived TO" + self.str_row_changed(6) + "\n" + \
+        "killed TO" + self.str_row_changed(12) + "\n" + \
+        "timed_out TO" + self.str_row_changed(18) + "\n" + \
+        "memory_error TO" + self.str_row_changed(24) + "\n" + \
+        "run_error TO" + self.str_row_changed(30) + "\n"
+
+    def add_changed(self, addee):
+        for i in range(0,36):
+            self.changed[i] += addee[i]
 
     def csv_changed(self):
         return str(self.changed).strip("[]")
@@ -171,7 +175,7 @@ class Report_score(Mutation_score):
 
     def get_filename(self, mutant):
         """
-        restore a new mutant"s new snapshot file name to be used as a key in the score
+        restore a new mutant's new snapshot file name to be used as a key in the score
         restore the line number so a changed mutant will display the correct tuples
         """
         if mutant.target_file is not None:
