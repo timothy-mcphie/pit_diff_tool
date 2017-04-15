@@ -3,13 +3,16 @@ class Score(object):
     Store results of a set of mutants
     """
 
-    def __init__(self, score_type, mutants=0, killed=0, survived=0, no_coverage=0, timed_out=0):
+    def __init__(self, score_type):
         self.score_type=score_type
-        self.mutants=mutants
-        self.killed=killed
-        self.survived=survived
-        self.no_coverage=no_coverage
-        self.timed_out=timed_out
+        self.mutants=0
+
+        self.no_coverage=0
+        self.survived=0
+        self.killed=0
+        self.timed_out=0
+        self.memory_error=0
+        self.run_error=0
 
     def __str__(self):
         return self.score_type+" mutants: "+str(self.mutants)+" Killed: "+str(self.killed)+ \
@@ -27,22 +30,28 @@ class Score(object):
         elif mutant.status == "killed": 
             self.killed += 1
         elif mutant.status == "timed_out":
-            #NB time outs may be inconsistent in different runs
             self.timed_out += 1
+        elif mutant.status == "memory_error":
+            self.memory_error += 1
+        elif mutant.status == "run_error":
+            self.run_error += 1
+        #NB the last three may be inconsistent in different runs
 
 class Mutation_score(object):
     """
     Abstract ish class
     """
-    def __init__(self, name, parent, children=True, modified=True, renamed=True):
+    def __init__(self, name, parent, children=True):
         self.name = str(name)
+        #Use an 36 element array initialised to 0 translate the mutants to get index
+        self.changed = [0 for x in range(0,36)]
+
         self.new = Score("[NEW]")
-        self.changed = Score("[CHANGED]")
         self.unchanged = Score("[UNCHANGED]")
         self.removed = Score("[REMOVED]")
+
         self.parent = parent
-        self.modified = modified
-        self.renamed = renamed
+        self.modified = False
         if children:
             self.children = {} #switch to using list of tuples if memory low
 
@@ -51,6 +60,42 @@ class Mutation_score(object):
             self.children[key] = Class(key, self)
         return self.children[key]
 
+    def update_new(self, mutant):
+        self.new.update(mutant) 
+
+    def update_changed(self, old_mutant, mutant):
+        #TODO: add check to see if indices are equal - there has been no change.
+        self.changed[old_mutant.get_index()*6+mutant.get_index()] += 1
+
+    def update_unchanged(self, mutant):
+        self.unchanged.update(mutant)
+
+    def update_removed(self, mutant):
+        self.removed.update(mutant)
+
+    def str_row_changed(self, start):
+        return " no_coverage " + self.changed[start] +\
+        " survived " + self.changed[start + 1] +\
+        " killed " + self.changed[start + 2] +\
+        " timed_out " + self.changed[start + 3] +\
+        " memory_error " + self.changed[start + 4] +\
+        " run_error " + self.changed[start + 5] +\
+
+    def str_changed(self):
+        #TODO: create a type getter as a property in mutant class returns a status given an index
+        #use in loop to build string - neater 
+        return "[CHANGED] "+"\n"+\
+        "no_coverage to "+self.str_row_changed(0)+"\n"+\
+        "survived to "+self.str_row_changed(6)+"\n"+\
+        "killed to"+self.str_row_changed(12)+"\n"+\
+        "timed_out to "+self.str_row_changed(18)+"\n"+\
+        "memory_error to "+self.str_row_changed(24)+"\n"+\
+        "run_error to "+self.str_row_changed(30)+"\n"
+
+    def __str__(self):
+        return type(self).__name__+" "+self.name+"\n"+str(self.new)+"\n"+"\n"+str(self.unchanged)+"\n"+str(self.removed)
+
+    """
     def total_new(self):
         return self.new.mutants+self.changed.mutants+self.unchanged.mutants
 
@@ -59,22 +104,8 @@ class Mutation_score(object):
 
     def delta_tuple(self):
         return (self.new.mutants+self.changed.mutants, \
-                self.total_new(), self.total_old())
-
-    def update_new(self, mutant):
-        self.new.update(mutant)
-
-    def update_changed(self, mutant):
-        self.changed.update(mutant)
-
-    def update_unchanged(self, mutant):
-        self.unchanged.update(mutant)
-
-    def update_removed(self, mutant):
-        self.removed.update(mutant)
-
-    def __str__(self):
-        return type(self).__name__+" "+self.name+"\n"+str(self.new)+"\n"+str(self.changed)+"\n"+str(self.unchanged)+"\n"+str(self.removed)
+                self.total_new(), self.total_old()) 
+    """
 
 class Method_score(Mutation_score):
     """
@@ -84,11 +115,11 @@ class Method_score(Mutation_score):
         Mutation_score.__init__(self, name, src_class, False)
         self.changed_mutants = None #append refs to changed mutants
 
-    def update_changed(self, mutant):
+    def update_changed(self, old_mutant, mutant):
         if self.changed_mutants is None:
             self.changed_mutants = []
         self.changed_mutants.append(mutant)
-        self.changed.update(mutant)
+        self.changed.update(old_mutant, mutant)
 
 class Class_score(Mutation_score):
     """
@@ -98,9 +129,9 @@ class Class_score(Mutation_score):
         Mutation_score.update_new(self, mutant)
         self.get_child(Method_score, mutant.mut_method).update_new(mutant)
 
-    def update_changed(self, mutant):
-        Mutation_score.update_changed(self, mutant)
-        self.get_child(Method_score, mutant.mut_method).update_changed(mutant)
+    def update_changed(self, old_mutant, mutant):
+        Mutation_score.update_changed(self, old_mutant, mutant)
+        self.get_child(Method_score, mutant.mut_method).update_changed(old_mutant, mutant)
 
     def update_unchanged(self, mutant):
         Mutation_score.update_unchanged(self, mutant)
@@ -118,9 +149,9 @@ class File_score(Mutation_score):
         Mutation_score.update_new(self, mutant)
         self.get_child(Class_score, mutant.mut_class).update_new(mutant)
 
-    def update_changed(self, mutant):
-        Mutation_score.update_changed(self, mutant)
-        self.get_child(Class_score, mutant.mut_class).update_changed(mutant)
+    def update_changed(self, old_mutant, mutant):
+        Mutation_score.update_changed(self, old_mutant, mutant)
+        self.get_child(Class_score, mutant.mut_class).update_changed(old_mutant, mutant)
 
     def update_unchanged(self, mutant):
         Mutation_score.update_unchanged(self, mutant)
@@ -151,9 +182,9 @@ class Report_score(Mutation_score):
         Mutation_score.update_new(self, mutant)
         self.get_child(File_score, self.get_filename(mutant)).update_new(mutant)
 
-    def update_changed(self, mutant):
-        Mutation_score.update_changed(self, mutant)
-        self.get_child(File_score, self.get_filename(mutant)).update_changed(mutant)
+    def update_changed(self, old_mutant, mutant):
+        Mutation_score.update_changed(self, old_mutant, mutant)
+        self.get_child(File_score, self.get_filename(mutant)).update_changed(old_mutant, mutant)
 
     def update_unchanged(self, mutant):
         Mutation_score.update_unchanged(self, mutant)

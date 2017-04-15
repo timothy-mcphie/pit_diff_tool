@@ -23,6 +23,13 @@ def update_mutant(mutant, modified_files):
     """
     Update a mutant in the new report to have the line numbers and file name it had in the previous commit
     """
+    #TODO: if a mutant's source line number is None, the mutant is in a modified class/method
+    #do we care if there are modifications which don't cause changes to mutants?
+    #if a mutant disappears it is in a modified class/method
+    #have a lookup dict to speedup - no need to traverse tree if we've already marked
+    #as modified
+    #does this catch all modifications?
+
     source_file = mutant.source_file
     if source_file not in modified_files:
         return
@@ -65,24 +72,20 @@ def process_report(report):
             mutant_dict[mutant.key()] = mutant
     return mutant_dict
 
-def get_differences(old_report, new_report, report_name, modified_files):
-    """
-    Get the differences
-    """
-    #TODO: Use sets, to get the unchanged mutants and missing mutants
-    score = Report_score(report_name, None)
-    old_mutants = process_report(old_report)
-    new_mutants = process_report(new_report)
-    name_map = {}
 
+def get_remaining_diff(old_mutants, new_mutants, score):
+    """
+    Called by get_differences, parses all other mutants which are not "changed" and inserts them into the score tree
+    """
+    #Check for unchanged and new mutants 
+    name_map = {}
     for mutant in new_mutants.values():
         update_mutant(mutant, modified_files)
         if mutant.key() in old_mutants:
             old_mutant = old_mutants[mutant.key()]
-            if mutant.status != old_mutant.status or mutant.detected != old_mutant.detected:
-                score.update_changed(mutant)
-            else:
+            if mutant.status == old_mutant.status and mutant.detected == old_mutant.detected: 
                 score.update_unchanged(mutant)
+            #a mutant existing in both reports - check if it's parent classes/methods are renamed so removed mutants can be assigned in the tree
             if mutant.mut_class != old_mutant.mut_class or mutant.mut_method != old_mutant.mut_method:
                 if old_mutant.name_key() not in name_map:
                     name_map[old_mutant.name_key()] = (mutant.mut_class, mutant.mut_method)
@@ -92,6 +95,7 @@ def get_differences(old_report, new_report, report_name, modified_files):
         else:
             score.update_new(mutant)
 
+    #Add old mutants 
     for old_mutant in old_mutants.values():
         if old_mutant.name_key() in name_map:
             renamed_class = name_map[old_mutant.name_key()][0]
@@ -101,6 +105,26 @@ def get_differences(old_report, new_report, report_name, modified_files):
         if old_mutant.source_file in name_map:
             old_mutant.source_file = name_map[old_mutant.source_file]
         score.update_removed(old_mutant)
+    return score
+
+def get_differences(old_report, new_report, report_name, modified_files, show_all):
+    """
+    Get the changed mutants between two mutation reports, if show_all is true, removed, unchanged and new mutants will be added to the score.
+    """
+    score = Report_score(report_name, None)
+    old_mutants = process_report(old_report)
+    new_mutants = process_report(new_report)
+    
+    #TODO: Use sets - iterate over an intersection for changed statuses
+    #broken out of unchanged/new loop for speed and readability, although calling with show_all introduces additional overhead
+    for mutant in new_mutants.values():
+        update_mutant(mutant, modified_files)
+        if mutant.key() in old_mutants:
+            old_mutant = old_mutants[mutant.key()]
+            if mutant.status != old_mutant.status or mutant.detected != old_mutant.detected:
+                score.update_changed(old_mutant, mutant) 
+    if show_all:
+        get_remaining_diff(old_mutants, new_mutants, score)
     return score
 
 def parse_report_score(report_score, csv=False):
@@ -122,7 +146,7 @@ def parse_report_score(report_score, csv=False):
 
     return delta
 
-def get_pit_diff(old_commit, new_commit, repo, old_report, new_report, modified_files):
+def get_pit_diff(old_commit, new_commit, repo, old_report, new_report, modified_files, show_all=False):
     check_report(old_report)
     check_report(new_report)
     if not modified_files:
@@ -131,5 +155,5 @@ def get_pit_diff(old_commit, new_commit, repo, old_report, new_report, modified_
     #TODO: Move repo check into sputnik program - is it necessary?
     #if not cmd.is_repo(repo):
     #    return None
-    report_score = get_differences(old_report, new_report, old_commit+" -> "+new_commit, modified_files)
+    report_score = get_differences(old_report, new_report, old_commit+" -> "+new_commit, modified_files, show_all)
     return report_score

@@ -4,7 +4,7 @@ class Mutant(object):
     """
 
     def __init__(self, detected, status, source_file, mut_class, mut_method, method_description, line_no, mutator, index, killing_test, description):
-        self.detected = str(detected).lower()
+        self.detected = str(detected).lower() #false generally only comes with statuses of survived or no_coverage
         self.status = str(status).lower()
         self.source_file = str(source_file)
         self.mut_class = str(mut_class) # the class mutated
@@ -15,8 +15,28 @@ class Mutant(object):
         self.index = str(index)#index to the first instruction where the mutation occurs, specific to ASM/bytecode representation (pit/MutationDetails.java:229)
         self.killing_test = str(killing_test)
         self.description = str(description) 
+
         self.target_line_no = None
         self.target_file = None
+        self.previous_status = None
+        self.previous_detected = None
+
+    def get_index(self):
+        """
+        Used for indexing in the array of a changed score object
+        """
+        if mutant.status == "no_coverage":
+            return 0
+        elif mutant.status == "survived":
+            return 1   
+        elif mutant.status == "killed": 
+            return 2
+        elif mutant.status == "timed_out":
+            return 3
+        elif mutant.status == "memory_error":
+            return 4
+        elif mutant.status == "run_error":
+            return 5
 
     def key(self):
         """

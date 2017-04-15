@@ -10,7 +10,7 @@ def run_cmd(cmd_arr, stdout=None, stderr=None):
     if stdout is not None:
         fd = open(stdout, "w")#might need wb instead - write in binary
     if stderr is not None:
-        fd2 = open(stderr, "w")#might need wb instead - write in binary
+        fd2 = open(stderr, "w")
     try:
         status = call(cmd_arr, stdout=fd, stderr=fd2)
         if status != 0:

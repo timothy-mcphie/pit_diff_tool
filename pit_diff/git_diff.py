@@ -27,9 +27,11 @@ def process_git_info(commit1, commit2, repo):
         elif patched_file.is_added_file:
             target_file = os.path.basename(patched_file.target_file)
             modified_files[target_file] = "ADDED"
+            continue
         elif patched_file.is_removed_file:
             source_file = os.path.basename(patched_file.source_file)
             modified_files[source_file] = "REMOVED"
+            continue
         target_to_source_dict = {}
         target_to_source_list = []
         target_file = os.path.basename(patched_file.target_file)
