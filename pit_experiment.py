@@ -1,8 +1,8 @@
 import sys
 import os
 import csv
-from pit_diff import cmd, diff, git_diff, scores
-#TODO: Use a logging function instead of prints - can ditch the [FNAME] tag
+from pit_diff import cmd, diff, git_diff, scores as s
+#TODO: Use a logging function instead of prints - can ditch the [FNAME] tag - output status of cmds to file
 
 global MAX_CONSECUTIVE_BUILD_FAILS
 MAX_CONSECUTIVE_BUILD_FAILS = 15
@@ -128,17 +128,18 @@ def main(repo, commit, report_dir, pit_filter):
     while True:
         old_commit = cmd.get_commit_hash(repo, old_commit+"^")
         #get parent commit
-        if old_commit is None:
-            print "[PIT_EXP] End of commit history, exiting"
-            sys.exit(0)
+        if old_commit == "d9f33d8ae9b288c5021fd688ff296c0d053a644e" or old_commit is None:
+            old_commit = "634066471f2941eddfcca3ed2a62c9d254cabccb"
+            #print "[PIT_EXP] End of commit history, exiting"
+            #sys.exit(0)
         print "[PIT_EXP] Parsing diff of commits ", old_commit, " to ", new_commit
         modified_files = git_diff.process_git_info(old_commit, new_commit, repo)
         #TODO: Show what files are modified
-        if not modified_files:
-            print "[PIT_EXP] Skipping commits with no java source files edited"
-            #if commit has no src code edits the old_report mutation score won't change
-            #new_report will stay the same commit arguably the most recent version will be most stable
-            continue
+        #if not modified_files:
+        #    print "[PIT_EXP] Skipping commits with no java source files edited"
+        #    #if commit has no src code edits the old_report mutation score won't change
+        #    #new_report will stay the same commit arguably the most recent version will be most stable
+        #    continue
         old_report = get_pit_report(repo, old_commit, report_dir, pit_filter)
         if old_report is None:
             #TODO:If build or pit failed and there are child commits with non source edits that were skipped
@@ -153,7 +154,7 @@ def main(repo, commit, report_dir, pit_filter):
         #delta = diff.get_pit_diff(old_commit, new_commit, repo, old_report, new_report, modified_files)
         #output_score(delta, report_dir)
         #new_report = old_report
-        #new_commit = old_commit
+        new_commit = old_commit
 
 #TODO: Take command line args - if no commit is given, default to HEAD
 #repo = "/Users/tim/Code/commons-collections"
@@ -164,3 +165,4 @@ report_dir = "/Users/tim/Code/pitReports/joda"
 repo = "/Users/tim/Code/joda-time"
 commit = "HEAD"
 main(repo, commit, report_dir, pit_filter)
+

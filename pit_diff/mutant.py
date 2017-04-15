@@ -25,17 +25,17 @@ class Mutant(object):
         """
         Used for indexing in the array of a changed score object
         """
-        if mutant.status == "no_coverage":
+        if self.status == "no_coverage":
             return 0
-        elif mutant.status == "survived":
+        elif self.status == "survived":
             return 1   
-        elif mutant.status == "killed": 
+        elif self.status == "killed": 
             return 2
-        elif mutant.status == "timed_out":
+        elif self.status == "timed_out":
             return 3
-        elif mutant.status == "memory_error":
+        elif self.status == "memory_error":
             return 4
-        elif mutant.status == "run_error":
+        elif self.status == "run_error":
             return 5
 
     def key(self):

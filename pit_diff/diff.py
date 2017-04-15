@@ -33,8 +33,11 @@ def update_mutant(mutant, modified_files):
     source_file = mutant.source_file
     if source_file not in modified_files:
         return
-
+    
     ((target_to_source_dict, target_to_source_list), target_file) = modified_files[source_file]
+    if target_to_source_dict is None:
+        #was an added file -> no update necessary
+        return 
 
     if target_file != source_file:
         #if the file was renamed, assign the mutant the old file name
@@ -136,24 +139,20 @@ def parse_report_score(report_score, csv=False):
         pass
 
     delta = []
-    #output only the changed mutants and their locations
     for file_score in report_score.children.values():
         for class_score in file_score.children.values():
             for method_score in class_score.children.values(): 
                 if method_score.changed.mutants > 0:
                     delta += (method_score.changed_mutants)
                     #TODO: use a lambda to print the str of each changed mutant each method score
-
     return delta
 
 def get_pit_diff(old_commit, new_commit, repo, old_report, new_report, modified_files, show_all=False):
+    """
+    Entry point for getting difference between two pit reports
+    NB it is the job of calling programs to check both repo and modified_files are not empty/uninitialised
+    """
     check_report(old_report)
     check_report(new_report)
-    if not modified_files:
-        print "[PIT_DIFF] Modified files translation dictionary not initialised, cannot update mutants"
-        return None
-    #TODO: Move repo check into sputnik program - is it necessary?
-    #if not cmd.is_repo(repo):
-    #    return None
     report_score = get_differences(old_report, new_report, old_commit+" -> "+new_commit, modified_files, show_all)
     return report_score

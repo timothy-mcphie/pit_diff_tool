@@ -74,23 +74,25 @@ class Mutation_score(object):
         self.removed.update(mutant)
 
     def str_row_changed(self, start):
-        return " no_coverage " + self.changed[start] +\
-        " survived " + self.changed[start + 1] +\
-        " killed " + self.changed[start + 2] +\
-        " timed_out " + self.changed[start + 3] +\
-        " memory_error " + self.changed[start + 4] +\
-        " run_error " + self.changed[start + 5] +\
+        return " no_coverage " + str(self.changed[start]) +\
+        " survived " + str(self.changed[start + 1]) +\
+        " killed " + str(self.changed[start + 2])# +\
+       # " timed_out " + str(self.changed[start + 3]) +\
+       # " memory_error " + str(self.changed[start + 4]) +\
+       # " run_error " + str(self.changed[start + 5])
 
     def str_changed(self):
-        #TODO: create a type getter as a property in mutant class returns a status given an index
-        #use in loop to build string - neater 
+        #TODO: create property method in mutant class returns a status given an index use in loop to build string - neater 
         return "[CHANGED] "+"\n"+\
-        "no_coverage to "+self.str_row_changed(0)+"\n"+\
-        "survived to "+self.str_row_changed(6)+"\n"+\
-        "killed to"+self.str_row_changed(12)+"\n"+\
-        "timed_out to "+self.str_row_changed(18)+"\n"+\
-        "memory_error to "+self.str_row_changed(24)+"\n"+\
-        "run_error to "+self.str_row_changed(30)+"\n"
+        "no_coverage TO"+self.str_row_changed(0)+"\n"+\
+        "survived TO"+self.str_row_changed(6)+"\n"+\
+        "killed TO"+self.str_row_changed(12)+"\n"#+\
+        #"timed_out TO"+self.str_row_changed(18)+"\n"+\
+        #"memory_error TO"+self.str_row_changed(24)+"\n"+\
+        #"run_error TO"+self.str_row_changed(30)+"\n"
+
+    def csv_changed(self):
+        return str(self.changed).strip("[]")
 
     def __str__(self):
         return type(self).__name__+" "+self.name+"\n"+str(self.new)+"\n"+"\n"+str(self.unchanged)+"\n"+str(self.removed)
@@ -119,7 +121,6 @@ class Method_score(Mutation_score):
         if self.changed_mutants is None:
             self.changed_mutants = []
         self.changed_mutants.append(mutant)
-        self.changed.update(old_mutant, mutant)
 
 class Class_score(Mutation_score):
     """
