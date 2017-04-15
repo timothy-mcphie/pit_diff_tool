@@ -21,9 +21,15 @@ def process_git_info(commit1, commit2, repo):
     patchset = load_diff(commit1, commit2, repo)
     modified_files = {}
     for patched_file in patchset:
-        if patched_file.is_added_file or patched_file.is_removed_file or not fnmatch.fnmatch(patched_file.source_file, "*.java"):
-            #hardcoded java only compatability
+        if not fnmatch.fnmatch(patched_file.source_file, "*.java"):
+            #hardcoded java only compatability -> skip non src files
             continue
+        elif patched_file.is_added_file:
+            target_file = os.path.basename(patched_file.target_file)
+            modified_files[target_file] = "ADDED"
+        elif patched_file.is_removed_file:
+            source_file = os.path.basename(patched_file.source_file)
+            modified_files[source_file] = "REMOVED"
         target_to_source_dict = {}
         target_to_source_list = []
         target_file = os.path.basename(patched_file.target_file)
