@@ -141,7 +141,7 @@ def parse_changed_mutants(report_score, csv=False):
     for file_score in report_score.children.values():
         for class_score in file_score.children.values():
             for method_score in class_score.children.values(): 
-                if method_score.changed.mutants > 0:
+                if method_score.changed_mutants:
                     if file_score.modified:
                         modified += (method_score.changed_mutants)
                     else:
@@ -149,9 +149,18 @@ def parse_changed_mutants(report_score, csv=False):
     #TODO: use a lambda to print the str of each changed mutant each method score
 
     if csv:
-        #csv module set up code here
-        pass
-    return delta
+        with open(report_score.name+".csv", "w") as f:
+            if modified:
+                f.write("MODIFIED FILES"+"\n")
+                for mutant in modified:
+                    f.write(str(mutant)+"\n")
+            if unmodified:
+                f.write("UNMODIFIED FILES"+"\n")
+                for mutant in unmodified:
+                    f.write(str(mutant)+"\n")
+
+    return (modified, unmodified)
+
 
 def parse_report_score(report_score, csv=False):
     """

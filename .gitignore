@@ -1,6 +1,8 @@
 #vim swap file
 *.swp
 *.pyc
+*.csv
+*.xml
 .DS_Store
 ~/
 pitReports/

@@ -21,6 +21,6 @@ print "UNMODIFIED"
 for f, changed in unmodified:
     print f
     print changed
-
+diff.parse_changed_mutants(delta, True)
 
 
