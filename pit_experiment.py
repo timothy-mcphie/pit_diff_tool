@@ -7,14 +7,15 @@ from pit_diff import cmd, diff, git_diff, scores as s
 global MAX_CONSECUTIVE_BUILD_FAILS
 MAX_CONSECUTIVE_BUILD_FAILS = 15
 
+def add_scores(old, new):
+
+
 def output_score(score, report_dir): 
-    """
     output_file = report_dir+"/output.csv"
-    delta = diff.parse_report_score(score)
+    (modified, unmodified) = diff.parse_report_score(score)
     with open output_file as f:
         for mut in score:
             print "[PIT_EXP] CHANGED ", str(d)
-    """
 
 def copy_build_files(repo):
     build_files = repo+"/../build_files-commons-collections"

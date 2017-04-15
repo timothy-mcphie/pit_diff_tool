@@ -76,20 +76,20 @@ class Mutation_score(object):
     def str_row_changed(self, start):
         return " no_coverage " + str(self.changed[start]) +\
         " survived " + str(self.changed[start + 1]) +\
-        " killed " + str(self.changed[start + 2])# +\
-       # " timed_out " + str(self.changed[start + 3]) +\
-       # " memory_error " + str(self.changed[start + 4]) +\
-       # " run_error " + str(self.changed[start + 5])
+        " killed " + str(self.changed[start + 2]) +\
+        " timed_out " + str(self.changed[start + 3]) +\
+        " memory_error " + str(self.changed[start + 4]) +\
+        " run_error " + str(self.changed[start + 5])
 
     def str_changed(self):
         #TODO: create property method in mutant class returns a status given an index use in loop to build string - neater 
         return "[CHANGED] "+"\n"+\
         "no_coverage TO"+self.str_row_changed(0)+"\n"+\
         "survived TO"+self.str_row_changed(6)+"\n"+\
-        "killed TO"+self.str_row_changed(12)+"\n"#+\
-        #"timed_out TO"+self.str_row_changed(18)+"\n"+\
-        #"memory_error TO"+self.str_row_changed(24)+"\n"+\
-        #"run_error TO"+self.str_row_changed(30)+"\n"
+        "killed TO"+self.str_row_changed(12)+"\n"+\
+        "timed_out TO"+self.str_row_changed(18)+"\n"+\
+        "memory_error TO"+self.str_row_changed(24)+"\n"+\
+        "run_error TO"+self.str_row_changed(30)+"\n"
 
     def csv_changed(self):
         return str(self.changed).strip("[]")
@@ -150,7 +150,8 @@ class File_score(Mutation_score):
         Mutation_score.update_new(self, mutant)
         self.get_child(Class_score, mutant.mut_class).update_new(mutant)
 
-    def update_changed(self, old_mutant, mutant):
+    def update_changed(self, old_mutant, mutant, modified):
+        self.modified = modified
         Mutation_score.update_changed(self, old_mutant, mutant)
         self.get_child(Class_score, mutant.mut_class).update_changed(old_mutant, mutant)
 
@@ -183,9 +184,9 @@ class Report_score(Mutation_score):
         Mutation_score.update_new(self, mutant)
         self.get_child(File_score, self.get_filename(mutant)).update_new(mutant)
 
-    def update_changed(self, old_mutant, mutant):
+    def update_changed(self, old_mutant, mutant, modified):
         Mutation_score.update_changed(self, old_mutant, mutant)
-        self.get_child(File_score, self.get_filename(mutant)).update_changed(old_mutant, mutant)
+        self.get_child(File_score, self.get_filename(mutant)).update_changed(old_mutant, mutant, modified)
 
     def update_unchanged(self, mutant):
         Mutation_score.update_unchanged(self, mutant)
