@@ -1,10 +1,8 @@
 from setuptools import setup, find_packages
 
-from pit_diff import VERSION
-
 setup(
         name='pit_diff',
-        version=VERSION,
+        version=1.0,
         description="Get the diff of two pitest xml reports",
         author='Timothy McPhie',
         author_email='mcphietimothy65@gmail.com',
