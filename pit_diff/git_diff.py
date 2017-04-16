@@ -1,4 +1,5 @@
 import os
+import sys
 import fnmatch
 import cmd
 from unidiff import PatchSet
@@ -14,10 +15,13 @@ def load_diff(commit1, commit2, repo):
         patchset = PatchSet.from_filename(diff_file)
     except:
         #failed to read it, convert to utf-8
-        cmd.run_cmd(["iconv", "-f", "ascii", "-t", "utf-8", diff_file, "-o", diff_file+".utf8.txt"])
+        print "running conversion"
+        if cmd.run_cmd(["iconv", "-f", "ascii", "-t", "utf-8", diff_file, "-o", diff_file+".utf8.txt"]) != 0:
+            print "[GIT_DIFF] failed to convert to utf exiting"
+            sys.exit(1)
         diff_file = diff_file+".utf8.txt"
         patchset = PatchSet.from_filename(diff_file)
-    cmd.run_cmd(["rm", diff_file])
+    #cmd.run_cmd(["rm", diff_file])
     return patchset
 
 def process_git_info(commit1, commit2, repo):
@@ -27,8 +31,11 @@ def process_git_info(commit1, commit2, repo):
     patchset = load_diff(commit1, commit2, repo)
     modified_files = {}
     for patched_file in patchset:
-        if not fnmatch.fnmatch(patched_file.source_file, "*.java") or patched_file.is_removed_file or patched_file.is_added_file:
+        if not fnmatch.fnmatch(patched_file.source_file, "*.java"):
             #hardcoded java only compatability -> skip non src files
+            continue
+        if patched_file.is_removed_file or patched_file.is_added_file:
+            #add removed and deleted java files to the files dictionary
             if patched_file.is_added_file:
                 modified_files[os.path.basename(patched_file.target_file)] = ((None, None), "ADDED")
             if patched_file.is_removed_file:
