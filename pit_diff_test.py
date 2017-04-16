@@ -12,15 +12,11 @@ old_report = report_dir+"/"+old_commit+".xml"
 new_report = report_dir+"/"+new_commit+".xml"
 delta = diff.get_pit_diff(old_commit, new_commit, repo, old_report, new_report, modified_files)
 print delta.str_changed()
-(modified, unmodified) = diff.parse_report_score(delta)
+(modified, unmodified) = diff.parse_changed_mutants(delta, True)
 print "MODIFIED"
-for f, changed in modified:
-    print f
-    print changed
+for changed in modified:
+    print str(changed)
 print "UNMODIFIED"
-for f, changed in unmodified:
-    print f
-    print changed
-diff.parse_changed_mutants(delta, True)
-
+for changed in unmodified:
+    print str(changed)
 

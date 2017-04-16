@@ -12,8 +12,8 @@ def parse_report_score(report_score):
     Get two lists of directly changed mutants (those in modified files) 
     and the indirectly changed mutants (those in unmodified files) 
     """ 
-    modified = s.Mutation_score("modified")
-    unmodified = s.Mutation_score("unmodified")
+    modified = s.Mutation_score("modified", None)
+    unmodified = s.Mutation_score("unmodified", None)
     for file_score in report_score.children.values(): 
         if file_score.modified:
             modified.add_changed(file_score.changed)
@@ -27,12 +27,12 @@ def output_score(total_modified, total_unmodified, new_commit, report_score, rep
     """
     output_file = report_dir+"/output.csv"
     (modified, unmodified) = parse_report_score(report_score)
+    with open(output_file, "a+") as f:
+        f.write(new_commit+","+file_score.csv_changed()+"\n")
+        f.write("modified,"+modified.csv_changed()+"\n")        
+        f.write("unmodified,"+unmodified.csv_changed()+"\n")        
     total_modified.add_changed(modified.changed) 
     total_unmodified.add_changed(unmodified.changed) 
-    with open(output_file, "a+") as f:
-        f.write(new_commit+","file_score.csv_changed()+"\n")
-        f.write("modified,"modified.csv_changed()+"\n")        
-        f.write("unmodified,"unmodified.csv_changed()+"\n")        
 
 def copy_build_files(repo):
     build_files = repo+"/../build_files-commons-collections"
@@ -139,8 +139,8 @@ def main(repo, commit, report_dir, pit_filter):
     if commit is None:
         print "[PIT_EXP] Failed to get hash of supplied commit ", commit
         sys.exit(0)
-    total_modified = s.Mutation_score("total_modified")
-    total_unmodified = s.Mutation_score("total_unmodified")
+    total_modified = s.Mutation_score("total_modified", None)
+    total_unmodified = s.Mutation_score("total_unmodified", None)
     new_report = get_pit_report(repo, commit, report_dir, pit_filter)
     new_commit = old_commit = commit #old_commit is the historically older snapshot of the project
 
