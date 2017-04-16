@@ -1,10 +1,19 @@
-#vim swap file
+#generated files
 *.swp
 *.pyc
 *.csv
 *.xml
-.DS_Store
-~/
+
+#folders from installing pit_diff as a module
+pit_diff/dist/
+pit_diff/pit_diff.egg-info
+
+#generated folders from program
 pitReports/
-#whoops
 HEAD*
+
+#Mac specific folder
+.DS_Store
+
+#whoops
+~/

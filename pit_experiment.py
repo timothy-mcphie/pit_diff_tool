@@ -21,25 +21,45 @@ def parse_report_score(report_score):
             unmodified.add_changed(file_score.changed)
     return (modified, unmodified)
 
-def output_score(total_modified, total_unmodified, new_commit, report_score, report_dir): 
+def output_score(total_modified, total_unmodified, new_commit, report_score, report_dir, output_file): 
     """
     Output and append to a csv file the change a new_commit introduces to the mutation score
     """
-    output_file = report_dir+"/output.csv"
     (modified, unmodified) = parse_report_score(report_score)
     with open(output_file, "a+") as f:
-        f.write(new_commit+","+file_score.csv_changed()+"\n")
+        f.write("[REPORT],"+new_commit+","+file_score.csv_changed()+"\n")
         f.write("modified,"+modified.csv_changed()+"\n")        
         f.write("unmodified,"+unmodified.csv_changed()+"\n")        
     total_modified.add_changed(modified.changed) 
     total_unmodified.add_changed(unmodified.changed) 
 
+def load_output(report_dir, output_file, total_modified, total_unmodified):
+    """
+    Parse an output csv - loading the results of any previous pit_diffs on reports
+    """
+    if not os.path.isfile(output_file):
+        print "[PIT_EXP] no output_file ", output_file, " found to load from"
+        return
+    with open(output_file, "r") as csvfile:
+        reader = csv.reader(csvfile, delimiter=",")
+        for row in reader:
+            if row[0] == "modified":
+                total_modified.add_changed(row[1:])
+            if row[0] == "unmodified":
+                total_unmodified.add_changed(row[1:])
+    print "[PIT_EXP] Found previous output of experiment in ", output_file
+    print "[PIT_EXP] Currently Modified files have ", total_modified.str_changed()
+    print "[PIT_EXP] Currently Unmodified files have ", total_unmodified.str_changed()
+    return
+
 def copy_build_files(repo):
     build_files = repo+"/../build_files-commons-collections"
+    if not os.path.isdir(repo+"/lib"):
+        print "[PIT_EXP] making lib dir in ", repo
+        if cmd.run_cmd(["mkdir", repo+"/lib"]):
+            print "[PIT_EXP] Failed to make lib dir for dependencies"
+            return False
     print "[PIT_EXP] Copying files from ", build_files, " to ", repo
-    #if cmd.run_cmd(["mkdir", repo+"/lib"]):
-    #    print "[PIT_EXP] Failed to make lib dir for dependencies"
-    #    return False
     if cmd.run_cmd(["cp", "-a", build_files+"/lib", repo+"/lib"]):
         print "[PIT_EXP] Failed to copy dependencies to lib"
         return False
@@ -52,20 +72,24 @@ def checkout_commit(repo, commit):
     return True 
 
 def mvn_compile(repo):
-    #TODO: Move away from hardcoded
+    if not os.path.isfile(repo+"/pom.xml"):
+        print "[PIT_EXP] No pom.xml found in repo ", repo, " building with maven not possible"
+        sys.exit(1)
     print "[PIT_EXP] repo is ", repo
     try:
         os.chdir(repo)
     except OSError as e:
         print "[PIT_EXP] Could not cd to repo ", repo, " ", e
         sys.exit(1)
-    #if cmd.run_cmd(["mvn", "-T", "4", "test"]) != 0:
-    if cmd.run_cmd(["mvn", "test"]) != 0: #not thread safe
+    if cmd.run_cmd(["mvn", "test"]) != 0:
+        #can do multi threading with -T x, where x is an integer, however some builds aren't threadsafe - causes failures
         return False
     return True
 
 def get_mvn_classpath(repo):
-    
+    """
+    Extract the classpath from the maven build - pit searches this for classes to mutate
+    """
     cp_file = repo+"/cp.txt"
     if cmd.run_cmd(["mvn", "dependency:build-classpath", "-Dmdep.outputFile="+cp_file]) != 0:
         print "[PIT_EXP] Failed to extract classpath from maven"
@@ -82,7 +106,6 @@ def get_mvn_classpath(repo):
         return None
     return cp.strip()
 
-
 def get_pit_report(repo, commit, report_dir, pit_filter):
     """
     Checkout, build and generate pit report for a repo snapshot
@@ -92,7 +115,7 @@ def get_pit_report(repo, commit, report_dir, pit_filter):
         print "[PIT_EXP] Found report previously generated at ", report_path
         return report_path
     if not checkout_commit(repo, commit): 
-        print "[PIT_EXP] Failed to checkout commit ", commit, " cannot attempt to build"
+        print "[PIT_EXP] Failed to checkout commit ", commit, " exiting"
         sys.exit(1) 
     if not copy_build_files(repo):
         print "[PIT_EXP] Could not set up build environment in ", repo, " exiting"
@@ -106,19 +129,17 @@ def get_pit_report(repo, commit, report_dir, pit_filter):
         print "[PIT_EXP] failed to get classpath from maven for snapshot ", commit, " - skipping this snapshot"
         return None 
     print "[PIT_EXP] Running pit on ", commit
+
     classpath = repo+"/lib/pitest-command-line-1.1.11.jar:"+\
 repo+"/lib/pitest-1.1.11.jar:"+\
 repo+"/lib/junit-4.11.jar:"+\
 mvn_classpath+":"+\
 repo+"/target/classes:"+\
 repo+"/target/test-classes:"
-
-#repo+"/target/classes:"+\
-#repo+"/target/test-classes:"+\
-#mvn_classpath
     target_classes = target_tests = pit_filter
     src_dir = repo+"/src"
     threads = "4"
+
     if cmd.run_pit(repo, classpath, report_dir, target_classes, target_tests, src_dir, threads) is None:
         print "[PIT_EXP] Pit report of ", commit, " failed to generate"
         return None
@@ -127,66 +148,109 @@ repo+"/target/test-classes:"
         print "[PIT_EXP] Failed to complete rename"
     return report_path
 
-def main(repo, commit, report_dir, pit_filter):
+def main(repo, start_commit, end_commit, report_dir, pit_filter, output_file):
     """
     Iterate backwards over commits in a repo running pit
     """ 
-    #TODO: Switch to iterating forwards, checkout the initial commit and use PIT incremental analysis
+    #TODO: Speed up with PIT incremental analysis by iterating forwards
     if not cmd.is_repo(repo):
         print "[PIT_EXP] This is not a valid git repository ", repo
-        sys.exit(1) 
-    commit = cmd.get_commit_hash(repo, commit)
-    if commit is None:
+        return
+    start_commit = cmd.get_commit_hash(repo, start_commit)
+    if start_commit is None:
         print "[PIT_EXP] Failed to get hash of supplied commit ", commit
-        sys.exit(0)
+        return 
     total_modified = s.Mutation_score("total_modified", None)
-    total_unmodified = s.Mutation_score("total_unmodified", None)
-    new_report = get_pit_report(repo, commit, report_dir, pit_filter)
-    new_commit = old_commit = commit #old_commit is the historically older snapshot of the project
+    total_unmodified = s.Mutation_score("total_unmodified", None) 
+    load_output(report_dir, output_file, total_modified, total_unmodified)
 
+    new_report = get_pit_report(repo, start_commit, report_dir, pit_filter)
+    new_commit = old_commit = start_commit #old_commit is the historically older snapshot of the project 
     failed_streak = 0
     while True:
         old_commit = cmd.get_commit_hash(repo, old_commit+"^")
-        #get parent commit
-        if old_commit is None:
+        if old_commit is None or old_commit == start_commit:
             print "[PIT_EXP] End of commit history, exiting"
             break
         print "[PIT_EXP] Parsing diff of commits ", old_commit, " to ", new_commit
         modified_files = git_diff.process_git_info(old_commit, new_commit, repo)
-        #TODO: Show what files are modified
-        #if not modified_files:
-        #    print "[PIT_EXP] Skipping commits with no java source files edited"
-        #    #if commit has no src code edits the old_report mutation score won't change
-        #    #new_report will stay the same commit arguably the most recent version will be most stable
-        #    continue
+        print "[PIT_EXP] Edited files: ", str([key for key in modified_files.keys()])
+        if not modified_files:
+            print "[PIT_EXP] Skipping commits with no java source files edited, no probable change to mutation score"
+            continue
         old_report = get_pit_report(repo, old_commit, report_dir, pit_filter)
         if old_report is None:
-            #TODO:If build or pit failed and there are child commits with non source edits that were skipped
-            #Try these children - could have build file edits which fix the build
             failed_streak += 1
             if failed_streak >= MAX_CONSECUTIVE_BUILD_FAILS:
                 print "[PIT_EXP] Couldn't build ", MAX_CONSECUTIVE_BUILD_FAILS, " consecutive commits exiting"
-                break
+                break#can also return, won't output totals
             continue
         failed_streak = 0
-        #print "[PIT_EXP] Extracting diff of ", old_commit, " and ", new_commit
-        #report_score = diff.get_pit_diff(old_commit, new_commit, repo, old_report, new_report, modified_files)
+        print "[PIT_EXP] Extracting diff of ", old_commit, " and ", new_commit
+        report_score = diff.get_pit_diff(old_commit, new_commit, repo, old_report, new_report, modified_files)
         #report_score is an object containing information on the mutation score delta
-        #output_score(total_modified, total_unmodified, new_commit, report_score, report_dir)
-        #new_report = old_report
+        output_score(total_modified, total_unmodified, new_commit, report_score, report_dir, output_file)
+        new_report = old_report
         new_commit = old_commit
     print "[PIT_EXP] ", total_modified.str_changed()
     print "[PIT_EXP] ", total_unmodified.str_changed()
     total_unmodified.add_changed(total_modified)
     print "[PIT_EXP] TOTAL", total_unmodified.str_changed()
+    print "[PIT_EXP] FINISHED"
 
-#TODO: Take command line args - if no commit is given, default to HEAD
+def process_input():
+    """
+    Load arguments from the command line, if there is already an output file -> load its results
+    REQUIRED:
+    pit_filter - the package name of classes/tests under mutation followed by kleene star
+    repo_path - the path to the git repository being tested
+    OPTIONAL:
+    start_commit - the commit from which to start generating pit reports from, defaults to HEAD
+    end_commit - the last commit to stop generating pit reports from
+    report_dir - path to directory to contain pit xml mutation reports
+    output_file - name and path to the file to contain output of experiment results
+    """
+    #TODO: Add check that start_commit is newer than end_commit
+    #TODO: Use argparse module
+    usage_string = "python pit_experiment.py [pit_filter] [repo_path] [OPTIONAL: start_commit] [OPTIONAL: end_commit] [OPTIONAL:report_dir] [OPTIONAL:output_file]"
+    if len(sys.argv) < 3:
+        print usage_string
+        return
+    pit_filter = str(sys.argv[2])
+    repo = str(sys.argv[3]) 
+
+    start_commit = "HEAD"
+    if len(sys.argv) == 4:
+        start_commit = str(sys.argv[3])
+
+    end_commit = ""
+    if len(sys.argv) == 5:
+        end_commit = str(sys.argv[4])
+
+    report_dir = repo+"/pitReports"
+    if len(sys.argv) == 6:
+        report_dir = str(sys.argv[5])
+    if not os.path.isdir(report_dir):
+        if cmd.run_cmd(["mkdir", report_dir]):
+            print "[PIT_EXP] Failed to make report_dir ", report_dir
+            return
+
+    output_file = report_dir+"/output.csv" 
+    if len(sys.argv) == 7:
+        output_file = str(sys.argv[6])
+    main(repo, start_commit, end_commit, report_dir, pit_filter, output_file)
+    return
+
+#process_input()
+
 #repo = "/Users/tim/Code/commons-collections"
 #pit_filter="org.apache.commons.collections4.*"
 #report_dir = "/Users/tim/Code/pitReports/cc4"
+
 pit_filter="org.joda.time*"
 report_dir = "/Users/tim/Code/pitReports/joda"
 repo = "/Users/tim/Code/joda-time"
-commit = "HEAD"
-main(repo, commit, report_dir, pit_filter)
-
+output_file = report_dir+"/output.csv" 
+start_commit = "HEAD"
+end_commit = ""
+main(repo, start_commit, end_commit, report_dir, pit_filter, output_file)

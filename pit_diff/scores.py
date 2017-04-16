@@ -95,9 +95,6 @@ class Mutation_score(object):
         for i in range(0,36):
             self.changed[i] += addee[i]
 
-    def csv_changed(self):
-        return str(self.changed).strip("[]")
-
     def __str__(self):
         return type(self).__name__+" "+self.name+"\n"+str(self.new)+"\n"+"\n"+str(self.unchanged)+"\n"+str(self.removed)
 

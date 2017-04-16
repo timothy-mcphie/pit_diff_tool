@@ -1,6 +1,7 @@
 import xml.etree.ElementTree as ET
 import sys
 import cmd
+import csv
 import fnmatch
 from mutant import Mutant
 from scores import Report_score
@@ -150,15 +151,16 @@ def parse_changed_mutants(report_score, csv=False):
 
     if csv:
         with open(report_score.name+".csv", "w") as f:
-            f.write(report_score.str_changed()+"\n")
+            writer = csv.writer(f, delimiter=",")
+            writer.writerow(report_score.str_changed())
             if modified:
-                f.write("MODIFIED FILES"+"\n")
+                writer.writerow("MODIFIED_FILES")
                 for mutant in modified:
-                    f.write(str(mutant)+"\n")
+                    writer.writerow(str(mutant))
             if unmodified:
-                f.write("UNMODIFIED FILES"+"\n")
+                writer.writerow("UNMODIFIED_FILES")
                 for mutant in unmodified:
-                    f.write(str(mutant)+"\n")
+                    writer.writerow(str(mutant))
 
     return (modified, unmodified)
 
