@@ -29,7 +29,7 @@ def update_mutant(mutant, modified_files):
     #For a class or method to be edited, a diff line must be removed or added (source_line_no or target_line_no == None)
     #If mutants are added or removed due to these edits, we can determine the class/method has been edited
     #But if no mutants are added/removed, we can't state that an edit has occurred.
-    #Needs more advanced diff parsing
+    #Needs more advanced diff parsing - build class and method level boundaries watch for changes impacting within. 
 
     source_file = mutant.source_file
     if source_file not in modified_files:
