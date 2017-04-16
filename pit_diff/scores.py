@@ -76,24 +76,27 @@ class Mutation_score(object):
     def str_row_changed(self, start):
         return " no_coverage " + str(self.changed[start]) +\
         " survived " + str(self.changed[start + 1]) +\
-        " killed " + str(self.changed[start + 2]) +\
-        " timed_out " + str(self.changed[start + 3]) +\
-        " memory_error " + str(self.changed[start + 4]) +\
-        " run_error " + str(self.changed[start + 5])
+        " killed " + str(self.changed[start + 2])
+#        " timed_out " + str(self.changed[start + 3]) +\
+#        " memory_error " + str(self.changed[start + 4]) +\
+#        " run_error " + str(self.changed[start + 5])
 
     def str_changed(self):
         #TODO: create property method in mutant class returns a status given an index use in loop to build string - neater 
         return self.name + " " + "\n" + \
         "no_coverage TO" + self.str_row_changed(0) + "\n" + \
         "survived TO" + self.str_row_changed(6) + "\n" + \
-        "killed TO" + self.str_row_changed(12) + "\n" + \
-        "timed_out TO" + self.str_row_changed(18) + "\n" + \
-        "memory_error TO" + self.str_row_changed(24) + "\n" + \
-        "run_error TO" + self.str_row_changed(30) + "\n"
+        "killed TO" + self.str_row_changed(12)
+#        "timed_out TO" + self.str_row_changed(18) + "\n" + \
+#        "memory_error TO" + self.str_row_changed(24) + "\n" + \
+#        "run_error TO" + self.str_row_changed(30) + "\n"
 
     def add_changed(self, addee):
         for i in range(0,36):
-            self.changed[i] += addee[i]
+            self.changed[i] += int(addee[i])
+
+    def total_changed(self):
+        return sum(self.changed)
 
     def __str__(self):
         return type(self).__name__+" "+self.name+"\n"+str(self.new)+"\n"+"\n"+str(self.unchanged)+"\n"+str(self.removed)

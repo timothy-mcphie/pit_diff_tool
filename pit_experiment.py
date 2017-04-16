@@ -21,15 +21,17 @@ def parse_report_score(report_score):
             unmodified.add_changed(file_score.changed)
     return (modified, unmodified)
 
-def output_score(total_modified, total_unmodified, new_commit, report_score, report_dir, output_file): 
+def output_score(total_modified, total_unmodified, new_commit, report_score, report_dir, output_file, csv=False): 
     """
     Output and append to a csv file the change a new_commit introduces to the mutation score
     """
     (modified, unmodified) = parse_report_score(report_score)
-    with open(output_file, "a+") as f:
-        f.write("[REPORT],"+new_commit+","+file_score.csv_changed()+"\n")
-        f.write("modified,"+modified.csv_changed()+"\n")        
-        f.write("unmodified,"+unmodified.csv_changed()+"\n")        
+    print "[PIT_EXP] retrieved modified with ", modified.total_changed(), " unmodified with ", unmodified.total_changed()
+    #with open(output_file, "a+") as f:
+    #    w = csv.writer(f, delimiter=",")
+    #    w.writerow([new_commit])
+    #    w.writerow(["modified"]+modified.changed)
+    #    w.writerow(["unmodified"]+unmodified.changed) 
     total_modified.add_changed(modified.changed) 
     total_unmodified.add_changed(unmodified.changed) 
 
@@ -37,19 +39,20 @@ def load_output(report_dir, output_file, total_modified, total_unmodified):
     """
     Parse an output csv - loading the results of any previous pit_diffs on reports
     """
+    #TODO: Only reload output if they are commits newer than start_commit and return the start and end commits of the previous output
     if not os.path.isfile(output_file):
         print "[PIT_EXP] no output_file ", output_file, " found to load from"
         return
     with open(output_file, "r") as csvfile:
-        reader = csv.reader(csvfile, delimiter=",")
+        reader = csv.reader(csvfile, delimiter=",") 
         for row in reader:
-            if row[0] == "modified":
+            if str(row[0]) == "modified":
                 total_modified.add_changed(row[1:])
-            if row[0] == "unmodified":
+            elif str(row[0]) == "unmodified":
                 total_unmodified.add_changed(row[1:])
     print "[PIT_EXP] Found previous output of experiment in ", output_file
-    print "[PIT_EXP] Currently Modified files have ", total_modified.str_changed()
-    print "[PIT_EXP] Currently Unmodified files have ", total_unmodified.str_changed()
+    print "[PIT_EXP] Currently Modified files have ", total_modified.total_changed(), " mutants"
+    print "[PIT_EXP] Currently Unmodified files have ", total_unmodified.total_changed(), " mutants"
     return
 
 def copy_build_files(repo):
@@ -169,12 +172,12 @@ def main(repo, start_commit, end_commit, report_dir, pit_filter, output_file):
     failed_streak = 0
     while True:
         old_commit = cmd.get_commit_hash(repo, old_commit+"^")
-        if old_commit is None or old_commit == start_commit:
+        if old_commit is None or old_commit == end_commit:
             print "[PIT_EXP] End of commit history, exiting"
             break
         print "[PIT_EXP] Parsing diff of commits ", old_commit, " to ", new_commit
         modified_files = git_diff.process_git_info(old_commit, new_commit, repo)
-        print "[PIT_EXP] Edited files: ", str([key for key in modified_files.keys()])
+        print "[PIT_EXP] Edited files: ", str([str(key) for key in modified_files.keys()])
         if not modified_files:
             print "[PIT_EXP] Skipping commits with no java source files edited, no probable change to mutation score"
             continue
@@ -183,18 +186,20 @@ def main(repo, start_commit, end_commit, report_dir, pit_filter, output_file):
             failed_streak += 1
             if failed_streak >= MAX_CONSECUTIVE_BUILD_FAILS:
                 print "[PIT_EXP] Couldn't build ", MAX_CONSECUTIVE_BUILD_FAILS, " consecutive commits exiting"
-                break#can also return, won't output totals
+                break
             continue
         failed_streak = 0
-        print "[PIT_EXP] Extracting diff of ", old_commit, " and ", new_commit
+        print "[PIT_EXP] Extracting pit diff of ", old_commit, " and ", new_commit
         report_score = diff.get_pit_diff(old_commit, new_commit, repo, old_report, new_report, modified_files)
+        print "[PIT_EXP] pit diff of ", old_commit, " and ", new_commit, " was:"
+        print "[PIT_EXP] ", report_score.str_changed()
         #report_score is an object containing information on the mutation score delta
         output_score(total_modified, total_unmodified, new_commit, report_score, report_dir, output_file)
         new_report = old_report
         new_commit = old_commit
     print "[PIT_EXP] ", total_modified.str_changed()
     print "[PIT_EXP] ", total_unmodified.str_changed()
-    total_unmodified.add_changed(total_modified)
+    total_unmodified.add_changed(total_modified.changed)
     print "[PIT_EXP] TOTAL", total_unmodified.str_changed()
     print "[PIT_EXP] FINISHED"
 
@@ -209,26 +214,29 @@ def process_input():
     end_commit - the last commit to stop generating pit reports from
     report_dir - path to directory to contain pit xml mutation reports
     output_file - name and path to the file to contain output of experiment results
+    EXAMPLE:
+    pypy pit_experiment.py org.joda.time* /Users/tim/Code/joda-time HEAD e705d60f83a20366aa50407485f55e9c4b15ff1b /Users/tim/Code/pitReports/joda /Users/tim/Code/pitReports/joda/output.csv 
+
     """
     #TODO: Add check that start_commit is newer than end_commit
     #TODO: Use argparse module
-    usage_string = "python pit_experiment.py [pit_filter] [repo_path] [OPTIONAL: start_commit] [OPTIONAL: end_commit] [OPTIONAL:report_dir] [OPTIONAL:output_file]"
+    usage_string = "pypy pit_experiment.py [pit_filter] [repo_path] [OPTIONAL: start_commit] [OPTIONAL: end_commit] [OPTIONAL:report_dir] [OPTIONAL:output_file]"
     if len(sys.argv) < 3:
         print usage_string
         return
-    pit_filter = str(sys.argv[2])
-    repo = str(sys.argv[3]) 
+    pit_filter = str(sys.argv[1])
+    repo = str(sys.argv[2]) 
 
     start_commit = "HEAD"
-    if len(sys.argv) == 4:
+    if len(sys.argv) >= 4:
         start_commit = str(sys.argv[3])
 
     end_commit = ""
-    if len(sys.argv) == 5:
+    if len(sys.argv) >= 5:
         end_commit = str(sys.argv[4])
 
     report_dir = repo+"/pitReports"
-    if len(sys.argv) == 6:
+    if len(sys.argv) >= 6:
         report_dir = str(sys.argv[5])
     if not os.path.isdir(report_dir):
         if cmd.run_cmd(["mkdir", report_dir]):
@@ -236,21 +244,10 @@ def process_input():
             return
 
     output_file = report_dir+"/output.csv" 
-    if len(sys.argv) == 7:
+    if len(sys.argv) >= 7:
         output_file = str(sys.argv[6])
+    print report_dir
     main(repo, start_commit, end_commit, report_dir, pit_filter, output_file)
     return
 
-#process_input()
-
-#repo = "/Users/tim/Code/commons-collections"
-#pit_filter="org.apache.commons.collections4.*"
-#report_dir = "/Users/tim/Code/pitReports/cc4"
-
-pit_filter="org.joda.time*"
-report_dir = "/Users/tim/Code/pitReports/joda"
-repo = "/Users/tim/Code/joda-time"
-output_file = report_dir+"/output.csv" 
-start_commit = "HEAD"
-end_commit = ""
-main(repo, start_commit, end_commit, report_dir, pit_filter, output_file)
+process_input()
