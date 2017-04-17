@@ -84,7 +84,7 @@ def run_pit(repo, classpath, report_dir, target_classes, target_tests, src_dir, 
             "--sourceDir", src_dir, \
             "--threads", threads, \
             "--outputFormats", "XML", \
-            "--timestampedReports", "false"], "/dev/null")
+            "--timestampedReports", "false"])
     if status != 0:
         return None
     return report_dir+"/mutations.xml"

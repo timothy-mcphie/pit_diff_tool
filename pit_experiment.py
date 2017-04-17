@@ -63,7 +63,7 @@ def copy_build_files(repo):
             print "[PIT_EXP] Failed to make lib dir for dependencies"
             return False
     print "[PIT_EXP] Copying files from ", build_files, " to ", repo
-    if cmd.run_cmd(["cp", "-a", build_files+"/lib", repo+"/lib"]):
+    if cmd.run_cmd(["cp", "-a", build_files+"/lib", repo]):
         print "[PIT_EXP] Failed to copy dependencies to lib"
         return False
     return True
@@ -131,6 +131,7 @@ def get_pit_report(repo, commit, report_dir, pit_filter):
     if mvn_classpath is None:
         print "[PIT_EXP] failed to get classpath from maven for snapshot ", commit, " - skipping this snapshot"
         return None 
+    print "[PIT_EXP] classpath from maven is ", mvn_classpath
     print "[PIT_EXP] Running pit on ", commit
 
     classpath = repo+"/lib/pitest-command-line-1.1.11.jar:"+\
@@ -215,7 +216,7 @@ def process_input():
     report_dir - path to directory to contain pit xml mutation reports
     output_file - name and path to the file to contain output of experiment results
     EXAMPLE:
-    pypy pit_experiment.py org.joda.time* /Users/tim/Code/joda-time HEAD e705d60f83a20366aa50407485f55e9c4b15ff1b /Users/tim/Code/pitReports/joda /Users/tim/Code/pitReports/joda/output.csv 
+    pypy pit_experiment.py org.joda.time* /Users/tim/Code/joda-time 0700250167244fa2883162d44dedb64aa75b4c6f e705d60f83a20366aa50407485f55e9c4b15ff1b /Users/tim/Code/pitReports/joda /Users/tim/Code/pitReports/joda/output.csv 
 
     """
     #TODO: Add check that start_commit is newer than end_commit
