@@ -2,30 +2,22 @@ import sys
 import os
 import csv
 from pit_diff import cmd, diff, git_diff, scores as s
-
-def output_score():
-    with open("PIT_WORKED.TXT", "a+") as f:
-        w = csv.writer(f, delimiter=",")
-        w.writerow([1,2,3,4,5])
-        w.writerow(pit_filter)
-
-#repo is directory that jenkins is in
+#repo is directory that jenkins is already in.
+repo = os.getcwd()
+report_dir = repo
+report_dir = repo#repo is not cleaned of all files
 pit_filter = str(sys.argv[1])
-print "we have ", pit_filter, " as pit_filter"
-output_score()
-cmd.run_cmd(["mv", "PIT_WORKED.TXT", "DID IT AGAIN"])
-
-#Sputnik script calls rev-parse HEAD^ - if fails no prev commits
-#extract cp maven
-#run pitest
-#save mutation report as rev-parse HEAD in repo
-#find HEAD^ report - if not found
-#git checkout and build with mvn
-#extract cp maven
-#run pitest
-#run git diff HEAD^
-#save mutation report as rev-parse HEAD^ in repo
-#git diff
-#run pit_diff
-
-#return via a pipe
+new_commit = cmd.get_commit_hash("HEAD")
+old_commit = cmd.get_commit_hash("HEAD^")
+if old_commit is None:
+    print "No previous history available to compare, exiting"
+    sys.exit(0)
+new_report = cmd.get_pit_report(repo, new_commit, report_dir, pit_filter, lib_dir)
+old_report = cmd.get_pit_report(repo, old_commit, report_dir, pit_filter, lib_dir)
+modified_files = git_diff.process_git_info(old_commit, new_commit, repo)
+#run pit_diff 
+report_score = diff.get_pit_diff(old_commit, new_commit, repo, old_report, new_report, modified_files)
+(modified, unmodified) = diff.parse_report_score(report_score)
+print "Mutation testing results"
+print "In modified files: ", total_modified.str_changed(), " mutants"
+print "In unmodified files have: ", total_unmodified.str_changed(), " mutants"
