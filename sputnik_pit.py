@@ -13,6 +13,7 @@ def output_score():
 pit_filter = str(sys.argv[1])
 print "we have ", pit_filter, " as pit_filter"
 output_score()
+cmd.run_cmd(["mv", "PIT_WORKED.TXT", "DID IT AGAIN"])
 
 #Sputnik script calls rev-parse HEAD^ - if fails no prev commits
 #extract cp maven
