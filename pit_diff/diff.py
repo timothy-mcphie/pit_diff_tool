@@ -132,6 +132,20 @@ def get_differences(old_report, new_report, report_name, modified_files, show_al
         get_remaining_diff(old_mutants, new_mutants, score)
     return score
 
+def parse_report_score(report_score):
+    """
+    Get two lists of directly changed mutants (those in modified files) 
+    and the indirectly changed mutants (those in unmodified files) 
+    """ 
+    modified = s.Mutation_score("modified", None)
+    unmodified = s.Mutation_score("unmodified", None)
+    for file_score in report_score.children.values(): 
+        if file_score.modified:
+            modified.add_changed(file_score.changed)
+        else:
+            unmodified.add_changed(file_score.changed)
+    return (modified, unmodified)
+
 def parse_changed_mutants(report_score, csv=False):
     """
     Parse the score for the mutant objects which have changed,  write to csv 

@@ -7,25 +7,11 @@ from pit_diff import cmd, diff, git_diff, scores as s
 global MAX_CONSECUTIVE_BUILD_FAILS
 MAX_CONSECUTIVE_BUILD_FAILS = 15
 
-def parse_report_score(report_score):
-    """
-    Get two lists of directly changed mutants (those in modified files) 
-    and the indirectly changed mutants (those in unmodified files) 
-    """ 
-    modified = s.Mutation_score("modified", None)
-    unmodified = s.Mutation_score("unmodified", None)
-    for file_score in report_score.children.values(): 
-        if file_score.modified:
-            modified.add_changed(file_score.changed)
-        else:
-            unmodified.add_changed(file_score.changed)
-    return (modified, unmodified)
-
 def output_score(total_modified, total_unmodified, new_commit, report_score, report_dir, output_file, csv=False): 
     """
     Output and append to a csv file the change a new_commit introduces to the mutation score
     """
-    (modified, unmodified) = parse_report_score(report_score)
+    (modified, unmodified) = diff.parse_report_score(report_score)
     print "[PIT_EXP] retrieved modified with ", modified.total_changed(), " unmodified with ", unmodified.total_changed()
     #with open(output_file, "a+") as f:
     #    w = csv.writer(f, delimiter=",")
@@ -55,103 +41,6 @@ def load_output(report_dir, output_file, total_modified, total_unmodified):
     print "[PIT_EXP] Currently Unmodified files have ", total_unmodified.total_changed(), " mutants"
     return
 
-def copy_build_files(repo):
-    build_files = repo+"/../build_files-commons-collections"
-    if not os.path.isdir(repo+"/lib"):
-        print "[PIT_EXP] making lib dir in ", repo
-        if cmd.run_cmd(["mkdir", repo+"/lib"]):
-            print "[PIT_EXP] Failed to make lib dir for dependencies"
-            return False
-    print "[PIT_EXP] Copying files from ", build_files, " to ", repo
-    if cmd.run_cmd(["cp", "-a", build_files+"/lib", repo]):
-        print "[PIT_EXP] Failed to copy dependencies to lib"
-        return False
-    return True
-
-def checkout_commit(repo, commit):
-    if cmd.run_cmd(["git", "-C", repo, "checkout", commit, "-f"], "/dev/null") != 0:
-        print "[PIT_EXP] Cannot check out commit ", commit, " in repo ", repo
-        return False
-    return True 
-
-def mvn_compile(repo):
-    if not os.path.isfile(repo+"/pom.xml"):
-        print "[PIT_EXP] No pom.xml found in repo ", repo, " building with maven not possible"
-        sys.exit(1)
-    print "[PIT_EXP] repo is ", repo
-    try:
-        os.chdir(repo)
-    except OSError as e:
-        print "[PIT_EXP] Could not cd to repo ", repo, " ", e
-        sys.exit(1)
-    if cmd.run_cmd(["mvn", "test"]) != 0:
-        #can do multi threading with -T x, where x is an integer, however some builds aren't threadsafe - causes failures
-        return False
-    return True
-
-def get_mvn_classpath(repo):
-    """
-    Extract the classpath from the maven build - pit searches this for classes to mutate
-    """
-    cp_file = repo+"/cp.txt"
-    if cmd.run_cmd(["mvn", "dependency:build-classpath", "-Dmdep.outputFile="+cp_file]) != 0:
-        print "[PIT_EXP] Failed to extract classpath from maven"
-        return None
-    cp = None
-    try:
-        with open(cp_file, "r") as f:
-            cp = f.readline()
-    except:
-        print "[PIT_EXP]couldn't perform open on ", cp_file
-        return None
-    if cmd.run_cmd(["rm", cp_file]) != 0: 
-        print "[PIT_EXP] Failed to delete remaining classpath file from maven"
-        return None
-    return cp.strip()
-
-def get_pit_report(repo, commit, report_dir, pit_filter):
-    """
-    Checkout, build and generate pit report for a repo snapshot
-    """
-    report_path = cmd.get_report_name(report_dir, commit)
-    if os.path.isfile(report_path):
-        print "[PIT_EXP] Found report previously generated at ", report_path
-        return report_path
-    if not checkout_commit(repo, commit): 
-        print "[PIT_EXP] Failed to checkout commit ", commit, " exiting"
-        sys.exit(1) 
-    if not copy_build_files(repo):
-        print "[PIT_EXP] Could not set up build environment in ", repo, " exiting"
-        sys.exit(1) 
-    if not mvn_compile(repo):
-        print "[PIT_EXP] Build of ", commit, " failed - skipping this snapshot"
-        return None
-    print "[PIT_EXP] getting maven classpath of ", commit
-    mvn_classpath = get_mvn_classpath(repo)
-    if mvn_classpath is None:
-        print "[PIT_EXP] failed to get classpath from maven for snapshot ", commit, " - skipping this snapshot"
-        return None 
-    print "[PIT_EXP] classpath from maven is ", mvn_classpath
-    print "[PIT_EXP] Running pit on ", commit
-
-    classpath = repo+"/lib/pitest-command-line-1.1.11.jar:"+\
-repo+"/lib/pitest-1.1.11.jar:"+\
-repo+"/lib/junit-4.11.jar:"+\
-mvn_classpath+":"+\
-repo+"/target/classes:"+\
-repo+"/target/test-classes:"
-    target_classes = target_tests = pit_filter
-    src_dir = repo+"/src"
-    threads = "4"
-
-    if cmd.run_pit(repo, classpath, report_dir, target_classes, target_tests, src_dir, threads) is None:
-        print "[PIT_EXP] Pit report of ", commit, " failed to generate"
-        return None
-    report_path = cmd.rename_file(report_dir+"/mutations.xml", report_path)
-    if report_path is None:
-        print "[PIT_EXP] Failed to complete rename"
-    return report_path
-
 def main(repo, start_commit, end_commit, report_dir, pit_filter, output_file):
     """
     Iterate backwards over commits in a repo running pit
@@ -168,7 +57,10 @@ def main(repo, start_commit, end_commit, report_dir, pit_filter, output_file):
     total_unmodified = s.Mutation_score("total_unmodified", None) 
     load_output(report_dir, output_file, total_modified, total_unmodified)
 
-    new_report = get_pit_report(repo, start_commit, report_dir, pit_filter)
+    #hardcoded dependency for running experiments
+    lib_dir = repo + "/../build_files-commons-collections/lib"
+
+    new_report = cmd.get_pit_report(repo, start_commit, report_dir, pit_filter, lib_dir)
     new_commit = old_commit = start_commit #old_commit is the historically older snapshot of the project 
     failed_streak = 0
     while True:
@@ -182,7 +74,7 @@ def main(repo, start_commit, end_commit, report_dir, pit_filter, output_file):
         if not modified_files:
             print "[PIT_EXP] Skipping commits with no java source files edited, no probable change to mutation score"
             continue
-        old_report = get_pit_report(repo, old_commit, report_dir, pit_filter)
+        old_report = cmd.get_pit_report(repo, old_commit, report_dir, pit_filter, lib_dir)
         if old_report is None:
             failed_streak += 1
             if failed_streak >= MAX_CONSECUTIVE_BUILD_FAILS:
