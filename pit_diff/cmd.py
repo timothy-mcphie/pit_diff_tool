@@ -29,7 +29,7 @@ def run_cmd(cmd_arr, stdout=None, stderr=None):
 
 def get_report_name(report_dir, commit):
     report_path = report_dir+"/"+commit+".xml"
-    print "[CMD] report path is", report_path
+    #print "[CMD] report path is", report_path
     return report_path
 
 def rename_file(old_path, new_path):
@@ -43,7 +43,7 @@ def rename_file(old_path, new_path):
     if status != 0:
         print "[CMD] Failed to rename the ", old_path, " to ", new_path
         sys.exit(1)
-    print "[CMD] Rename successful from ", old_path, " to ", new_path
+    #print "[CMD] Rename successful from ", old_path, " to ", new_path
     return new_path
 
 def get_commit_hash(repo, commit):
@@ -63,24 +63,24 @@ def get_commit_hash(repo, commit):
         print "[CMD] Error ", err
         return None
     output = output.strip()
-    print "[CMD] commit hash is ", output
+    #print "[CMD] commit hash is ", output
     return output
 
 def checkout_commit(repo, commit):
     if run_cmd(["git", "-C", repo, "checkout", commit, "-f"]) != 0:
-        print "[PIT_EXP] Cannot check out commit ", commit, " in repo ", repo
+        #print "[CMD] Cannot check out commit ", commit, " in repo ", repo
         return False
     return True 
 
 def mvn_compile(repo):
     if not os.path.isfile(repo+"/pom.xml"):
-        print "[PIT_EXP] No pom.xml found in repo ", repo, " building with maven not possible"
+        print "[CMD] No pom.xml found in repo ", repo, " building with maven not possible"
         sys.exit(1)
-    print "[PIT_EXP] repo is ", repo
+    #print "[CMD] repo is ", repo
     try:
         os.chdir(repo)
     except OSError as e:
-        print "[PIT_EXP] Could not cd to repo ", repo, " ", e
+        print "[CMD] Could not cd to repo ", repo, " ", e
         sys.exit(1)
     if run_cmd(["mvn", "test"]) != 0:
         #can do multi threading with -T x, where x is an integer, however some builds aren't threadsafe - causes failures
@@ -93,29 +93,29 @@ def get_mvn_classpath(repo):
     """
     cp_file = repo+"/cp.txt"
     if run_cmd(["mvn", "dependency:build-classpath", "-Dmdep.outputFile="+cp_file]) != 0:
-        print "[PIT_EXP] Failed to extract classpath from maven"
+        print "[CMD] Failed to extract classpath from maven"
         return None
     cp = None
     try:
         with open(cp_file, "r") as f:
             cp = f.readline()
     except:
-        print "[PIT_EXP]couldn't perform open on ", cp_file
+        print "[CMD]couldn't perform open on ", cp_file
         return None
     if run_cmd(["rm", cp_file]) != 0: 
-        print "[PIT_EXP] Failed to delete remaining classpath file from maven"
+        print "[CMD] Failed to delete remaining classpath file from maven"
         return None
     return cp.strip()
 
 def copy_build_files(repo, lib_dir):
     if not os.path.isdir(repo+"/lib"):
-        print "[PIT_EXP] making lib dir in ", repo
+        #print "[CMD] making lib dir in ", repo
         if run_cmd(["mkdir", repo+"/lib"]):
-            print "[PIT_EXP] Failed to make lib dir for dependencies"
+            print "[CMD] Failed to make lib dir for dependencies"
             return False
-    print "[PIT_EXP] Copying files from ", lib_dir, " to ", repo
+    #print "[CMD] Copying files from ", lib_dir, " to ", repo
     if run_cmd(["cp", lib_dir+"/junit-4.11.jar", lib_dir+"/pitest-command-line-1.1.11.jar", lib_dir+"/pitest-1.1.11.jar", repo+"/lib"]):
-        print "[PIT_EXP] Failed to copy pit dependencies to lib"
+        print "[CMD] Failed to copy pit dependencies to lib"
         return False
     return True 
 
@@ -125,24 +125,24 @@ def get_pit_report(repo, commit, report_dir, pit_filter, lib_dir):
     """
     report_path = get_report_name(report_dir, commit)
     if os.path.isfile(report_path):
-        print "[PIT_EXP] Found report previously generated at ", report_path
+        #print "[CMD] Found report previously generated at ", report_path
         return report_path
     if not checkout_commit(repo, commit): 
-        print "[PIT_EXP] Failed to checkout commit ", commit, " exiting"
+        print "[CMD] Failed to checkout commit ", commit, " exiting"
         sys.exit(1) 
     if not copy_build_files(repo, lib_dir):
-        print "[PIT_EXP] Could not set up build environment in ", repo, " exiting"
+        print "[CMD] Could not set up build environment in ", repo, " exiting"
         sys.exit(1) 
     if not mvn_compile(repo):
-        print "[PIT_EXP] Build of ", commit, " failed - skipping this snapshot"
+        print "[CMD] Build of ", commit, " failed"
         return None
-    print "[PIT_EXP] getting maven classpath of ", commit
+    #print "[CMD] getting maven classpath of ", commit
     mvn_classpath = get_mvn_classpath(repo)
     if mvn_classpath is None:
-        print "[PIT_EXP] failed to get classpath from maven for snapshot ", commit, " - skipping this snapshot"
+        print "[CMD] failed to get classpath from maven for snapshot ", commit, " - skipping this snapshot"
         return None 
-    print "[PIT_EXP] classpath from maven is ", mvn_classpath
-    print "[PIT_EXP] Running pit on ", commit
+    #print "[CMD] classpath from maven is ", mvn_classpath
+    #print "[CMD] Running pit on ", commit
 
     classpath = repo+"/lib/pitest-command-line-1.1.11.jar:"+\
 repo+"/lib/pitest-1.1.11.jar:"+\
@@ -155,11 +155,11 @@ repo+"/target/test-classes:"
     threads = "4"
 
     if run_pit(repo, classpath, report_dir, target_classes, target_tests, src_dir, threads) is None:
-        print "[PIT_EXP] Pit report of ", commit, " failed to generate"
+        print "[CMD] Pit report of ", commit, " failed to generate"
         return None
     report_path = rename_file(report_dir+"/mutations.xml", report_path)
     if report_path is None:
-        print "[PIT_EXP] Failed to complete rename"
+        print "[CMD] Failed to complete rename"
     return report_path
 
 def is_repo(repo):
