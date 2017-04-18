@@ -7,17 +7,17 @@ from pit_diff import cmd, diff, git_diff, scores as s
 global MAX_CONSECUTIVE_BUILD_FAILS
 MAX_CONSECUTIVE_BUILD_FAILS = 15
 
-def output_score(total_modified, total_unmodified, new_commit, report_score, report_dir, output_file, csv=False): 
+def output_score(modified_files, total_modified, total_unmodified, new_commit, report_score, report_dir, output_file, csv=False): 
     """
     Output and append to a csv file the change a new_commit introduces to the mutation score
     """
     (modified, unmodified) = diff.parse_report_score(report_score)
     print "[PIT_EXP] retrieved modified with ", modified.total_changed(), " unmodified with ", unmodified.total_changed()
-    #with open(output_file, "a+") as f:
-    #    w = csv.writer(f, delimiter=",")
-    #    w.writerow([new_commit])
-    #    w.writerow(["modified"]+modified.changed)
-    #    w.writerow(["unmodified"]+unmodified.changed) 
+    with open(output_file, "a+") as f:
+        w = csv.writer(f, delimiter=",")
+        w.writerow([new_commit, len(modified_files)])
+        w.writerow(["modified"]+modified.changed)
+        w.writerow(["unmodified"]+unmodified.changed) 
     total_modified.add_changed(modified.changed) 
     total_unmodified.add_changed(unmodified.changed) 
 
@@ -87,7 +87,7 @@ def main(repo, start_commit, end_commit, report_dir, pit_filter, output_file):
         print "[PIT_EXP] pit diff of ", old_commit, " and ", new_commit, " was:"
         print "[PIT_EXP] ", report_score.str_changed()
         #report_score is an object containing information on the mutation score delta
-        output_score(total_modified, total_unmodified, new_commit, report_score, report_dir, output_file)
+        output_score(modified_files, total_modified, total_unmodified, new_commit, report_score, report_dir, output_file)
         new_report = old_report
         new_commit = old_commit
     print "[PIT_EXP] ", total_modified.str_changed()
@@ -108,7 +108,7 @@ def process_input():
     report_dir - path to directory to contain pit xml mutation reports
     output_file - name and path to the file to contain output of experiment results
     EXAMPLE:
-    pypy pit_experiment.py org.joda.time* /Users/tim/Code/joda-time 0700250167244fa2883162d44dedb64aa75b4c6f e705d60f83a20366aa50407485f55e9c4b15ff1b /Users/tim/Code/pitReports/joda /Users/tim/Code/pitReports/joda/output.csv 
+    pypy pit_experiment.py org.joda.time* /Users/tim/Code/joda-time 4f3f330a14067f2ae55c20ce62f6279e2bef0710 e705d60f83a20366aa50407485f55e9c4b15ff1b /Users/tim/Code/pitReports/joda /Users/tim/Code/pitReports/joda/output.csv 
 
     """
     #TODO: Add check that start_commit is newer than end_commit
