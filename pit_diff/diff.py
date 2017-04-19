@@ -4,7 +4,7 @@ import cmd
 import csv
 import fnmatch
 from mutant import Mutant
-from scores import Report_score
+from scores import Report_score, Mutation_score
 
 def check_report(report):
     if not fnmatch.fnmatch(report, "*.xml"): 
@@ -137,8 +137,8 @@ def parse_report_score(report_score):
     Get two lists of directly changed mutants (those in modified files) 
     and the indirectly changed mutants (those in unmodified files) 
     """ 
-    modified = s.Mutation_score("modified", None)
-    unmodified = s.Mutation_score("unmodified", None)
+    modified = Mutation_score("modified", None)
+    unmodified = Mutation_score("unmodified", None)
     for file_score in report_score.children.values(): 
         if file_score.modified:
             modified.add_changed(file_score.changed)

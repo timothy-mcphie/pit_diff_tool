@@ -83,8 +83,7 @@ class Mutation_score(object):
 
     def str_changed(self):
         #TODO: create property method in mutant class returns a status given an index use in loop to build string - neater 
-        return self.name + " " + "\n" + \
-        "no_coverage TO" + self.str_row_changed(0) + "\n" + \
+        return "no_coverage TO" + self.str_row_changed(0) + "\n" + \
         "survived TO" + self.str_row_changed(6) + "\n" + \
         "killed TO" + self.str_row_changed(12)
 #        "timed_out TO" + self.str_row_changed(18) + "\n" + \
