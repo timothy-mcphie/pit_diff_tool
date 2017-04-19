@@ -11,17 +11,8 @@ def load_diff(commit1, commit2, repo):
     """
     diff_file = str(commit1)+"diff"+str(commit2)
     cmd.run_cmd(["git", "-C", repo, "diff", commit1, commit2], diff_file)
-    try:
-        patchset = PatchSet.from_filename(diff_file)
-    except:
-        #failed to read it, convert to utf-8
-        print "running conversion"
-        if cmd.run_cmd(["iconv", "-f", "ascii", "-t", "utf-8", diff_file, "-o", diff_file+".utf8.txt"]) != 0:
-            print "[GIT_DIFF] failed to convert to utf exiting"
-            sys.exit(1)
-        diff_file = diff_file+".utf8.txt"
-        patchset = PatchSet.from_filename(diff_file)
-    #cmd.run_cmd(["rm", diff_file])
+    patchset = PatchSet.from_filename(diff_file)
+    cmd.run_cmd(["rm", diff_file])
     return patchset
 
 def process_git_info(commit1, commit2, repo):
