@@ -36,9 +36,10 @@ def update_mutant(mutant, modified_files):
         return False
     
     ((target_to_source_dict, target_to_source_list), target_file) = modified_files[source_file]
-    if target_to_source_dict is None:
-        #was an added file -> no update necessary
-        return True
+
+    #Enable to provide mutants belonging to deleted/added files the modified flag for their file_Score.
+    #if target_to_source_dict is None:
+    #    return True
 
     if target_file != source_file:
         #if the file was renamed, assign the mutant the old file name
@@ -51,16 +52,12 @@ def update_mutant(mutant, modified_files):
         mutant.line_no = target_to_source_dict[mutant.line_no].source_line_no
         return True
 
-    iterator = iter(target_to_source_list)
-    line = iterator.next()
-    while mutant.line_no > line.target_line_no:
-        try:
-            next_line = iterator.next()
-            if mutant.line_no < next_line.target_line_no:
-                break 
-            line = next_line
-        except StopIteration as e:
-            break 
+    i = 0
+    while i < len(target_to_source_list) - 1 and mutant.line_no < target_to_source_list[i].target_line_no:
+        i += 1 
+    while i > 0 and target_to_source_list[i].source_line_no is None and target_to_source_list[i].target_line_no < mutant.line_no:
+        i -= 1 
+    line = target_to_source_list[i]
     mutant.line_no = mutant.line_no + (line.source_line_no - line.target_line_no) 
     return True
 

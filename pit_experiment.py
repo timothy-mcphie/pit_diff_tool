@@ -7,7 +7,7 @@ from pit_diff import cmd, diff, git_diff, scores as s
 global MAX_CONSECUTIVE_BUILD_FAILS
 MAX_CONSECUTIVE_BUILD_FAILS = 15
 
-def output_score(modified_files, total_modified, total_unmodified, new_commit, report_score, report_dir, output_file, csv=False): 
+def output_score(modified_files, total_modified, total_unmodified, new_commit, report_score, report_dir, output_file): 
     """
     Output and append to a csv file the change a new_commit introduces to the mutation score
     """
@@ -25,7 +25,7 @@ def load_output(report_dir, output_file, total_modified, total_unmodified):
     """
     Parse an output csv - loading the results of any previous pit_diffs on reports
     """
-    #TODO: Only reload output if they are commits newer than start_commit and return the start and end commits of the previous output
+    #TODO: Only reload output if they are commits newer than start_commit and return the start and end commits of the previous output, also check if the commits in the output file are actually part of this project and we are attempting to resume correctly. Will append to a file
     if not os.path.isfile(output_file):
         print "[PIT_EXP] no output_file ", output_file, " found to load from"
         return
