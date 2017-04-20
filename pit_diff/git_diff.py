@@ -25,14 +25,7 @@ def process_git_info(commit1, commit2, repo):
         if not fnmatch.fnmatch(patched_file.source_file, "*.java"):
             #hardcoded java only compatability -> skip non src files
             continue
-    #TODO:Uncomment the next 6 lines to prevent pit_experiment skipping diffs which only contain removals or deletions of source files. Also can be used to provide the diff file_score the is_modified flag.
-    #    if patched_file.is_removed_file or patched_file.is_added_file:
-    #        #add removed and deleted java files to the files dictionary
-    #        if patched_file.is_added_file:
-    #            modified_files[os.path.basename(patched_file.target_file)] = ((None, None), "ADDED")
-    #        if patched_file.is_removed_file:
-    #            modified_files[os.path.basename(patched_file.source_file)] = ((None, None), "REMOVED") #it was a removed file -> a new mutant cannot update from this
-    #        continue
+
         target_to_source_dict = {}
         target_to_source_list = []
         target_file = os.path.basename(patched_file.target_file)
@@ -41,6 +34,6 @@ def process_git_info(commit1, commit2, repo):
         for hunk in patched_file:
             for line in hunk.target_lines():
                 target_to_source_dict[line.target_line_no] = line
-            target_to_source_list.append(line)
+                target_to_source_list.append(line)
         modified_files[target_file] = ((target_to_source_dict, target_to_source_list), source_file)
     return modified_files 

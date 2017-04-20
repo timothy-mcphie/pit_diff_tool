@@ -27,7 +27,7 @@ new_report = cmd.get_pit_report(repo, new_commit, report_dir, pit_filter, lib_di
 old_report = cmd.get_pit_report(repo, old_commit, report_dir, pit_filter, lib_dir)
 modified_files = git_diff.process_git_info(old_commit, new_commit, repo)
 report_score = diff.get_pit_diff(old_commit, new_commit, repo, old_report, new_report, modified_files)
-(modified, unmodified) = diff.parse_report_score(report_score)
+(modified, unmodified) = diff.parse_file_score(report_score)
 (modmutants, unmodmutants) = diff.parse_changed_mutants(report_score)
 if not modmutants and not unmodmutants:
     print "No preexisting mutants had their status changed"

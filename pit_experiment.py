@@ -11,7 +11,7 @@ def output_score(modified_files, total_modified, total_unmodified, new_commit, r
     """
     Output and append to a csv file the change a new_commit introduces to the mutation score
     """
-    (modified, unmodified) = diff.parse_report_score(report_score)
+    (modified, unmodified) = diff.parse_file_score(report_score)
     print "[PIT_EXP] retrieved modified with ", modified.total_changed(), " unmodified with ", unmodified.total_changed()
     with open(output_file, "a+") as f:
         w = csv.writer(f, delimiter=",")
