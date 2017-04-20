@@ -43,8 +43,9 @@ class Mutation_score(object):
     """
     def __init__(self, name, parent, children=True):
         self.name = str(name)
-        #Use an 36 element array initialised to 0 translate the mutants to get index
-        self.changed = [0 for x in range(0,36)]
+        #Use an 9 element array initialised to 0 translate the mutants to get index
+        #don't care about time outs, memory or run errors
+        self.changed = [0 for x in range(0,9)]
 
         self.new = Score("[NEW]")
         self.unchanged = Score("[UNCHANGED]")
@@ -71,24 +72,19 @@ class Mutation_score(object):
 
     def update_changed(self, old_mutant, mutant):
         #TODO: add check to see if indices are equal - there has been no change.
-        self.changed[old_mutant.get_index()*6+mutant.get_index()] += 1
+        if mutant.get_index() < 3 or old_mutant.get_index() < 3:
+            self.changed[old_mutant.get_index()*3+mutant.get_index()] += 1
 
     def str_row_changed(self, start):
         return " no_coverage " + str(self.changed[start]) +\
         " survived " + str(self.changed[start + 1]) +\
         " killed " + str(self.changed[start + 2])
-#        " timed_out " + str(self.changed[start + 3]) +\
-#        " memory_error " + str(self.changed[start + 4]) +\
-#        " run_error " + str(self.changed[start + 5])
 
     def str_changed(self):
         #TODO: create property method in mutant class returns a status given an index use in loop to build string - neater 
         return "no_coverage TO" + self.str_row_changed(0) + "\n" + \
-        "survived TO" + self.str_row_changed(6) + "\n" + \
-        "killed TO" + self.str_row_changed(12)
-#        "timed_out TO" + self.str_row_changed(18) + "\n" + \
-#        "memory_error TO" + self.str_row_changed(24) + "\n" + \
-#        "run_error TO" + self.str_row_changed(30) + "\n"
+        "survived TO" + self.str_row_changed(3) + "\n" + \
+        "killed TO" + self.str_row_changed(6)
 
     def add_changed(self, addee):
         for i in range(0,36):
