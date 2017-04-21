@@ -147,20 +147,16 @@ def parse_class_method_score(report_score):
     modified_method = Mutation_score("modified_method", None)
     unmodified_method = Mutation_score("unmodified_method", None)
     for file_score in report_score.children.values(): 
-
-        if file_score.modified is True:
-            for class_score in file_score.children.values():
-                if class_score.modified:
-                    modified_class.add_changed(class_score.changed)
+        for class_score in file_score.children.values():
+            if class_score.modified:
+                modified_class.add_changed(class_score.changed)
+            else:
+                unmodified_class.add_changed(class_score.changed)
+            for method_score in class_score.children.values():
+                if method_score.modified:
+                    modified_method.add_changed(method_score.changed)
                 else:
-                    unmodified_class.add_changed(class_score.changed)
-
-                if class_score.modified is True:
-                    for method_score in class_score.children.values():
-                        if method_score.modified:
-                            modified_method.add_changed(method_score.changed)
-                        else:
-                            unmodified_method.add_changed(method_score.changed)
+                    unmodified_method.add_changed(method_score.changed)
 
     return (modified_class, unmodified_class, modified_method, unmodified_method)
 
