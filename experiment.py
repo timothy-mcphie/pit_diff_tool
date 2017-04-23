@@ -13,25 +13,6 @@ import scipy.stats
 #
 def create_stats(data):
     return [numpy.sum(data), numpy.mean(data), numpy.median(data), numpy.std(data), numpy.nanmin(data), numpy.nanmax(data), scipy.stats.skew(data)]
-#
-#    try:
-#        nbins = int(options.bins)
-#    except ValueError:
-#        nbins = 50
-#
-#    fig = plt.figure()
-#    plt.hist(data, bins=nbins)
-#    fig.savefig("hist.png")
-#    
-#    # cdf
-#    fig1 = plt.figure()
-#    [y, x0, bs, xtra] = scipy.stats.cumfreq(data, nbins) # bin values, lowerlimit, binsize, extrapoints 
-#    scale = 1.0/y[-1]
-#    y *= scale
-#    x = numpy.linspace(x0, x0 + nbins*bs, nbins)
-#    plt.plot(x, y)
-#    fig1.savefig("cdf.png")
-#
 
 def parse_score(out_file):
     
@@ -126,7 +107,7 @@ def parse_score(out_file):
             method_unmod_k_nc.append(int(row[52]))
             method_unmod_k_sur.append(int(row[53]))
 
-    with open("cc4.csv", "w") as f:
+    with open("joda.csv", "w") as f:
         writer = csv.writer(f, delimiter=",")
         writer.writerow(["variable ", "sum", "mean", "median", "standard deviation", "min", "max", "skew"])
         writer.writerow(["total_nc_sur"]+  create_stats(total_nc_sur))
@@ -246,10 +227,20 @@ def main(repo, start_commit, end_commit, report_dir, pit_filter, output_file):
     output_score(rows, output_file)
     print "Total parse ", total_parsed
 
-repo = "/Users/tim/Code/commons-collections"
-start_commit = "HEAD"
-end_commit = "aa048da715d8605f1ecc66d60ddb8d0c17323456" 
-report_dir = "/Users/tim/Code/pitReports/cc4"
+#repo = "/Users/tim/Code/commons-collections"
+#report_dir = "/Users/tim/Code/pitReports/cc4"
+repo = "/Users/tim/Code/joda-time"
+report_dir = "/Users/tim/Code/pitReports/joda"
 output_file = "output.csv"
+start_commit = "HEAD" 
+end_commit = "c5a5190e19c062405ae4825c36e2172ae64202fb"
 #main(repo, start_commit, end_commit, report_dir, None, output_file)
 parse_score(output_file)
+
+#old_commit = "cfffa7138c04b971d119a5da94b9a71d610bba0a"
+#new_commit = "5250fdfdf3720a96366cac57fd216e8fa6c13cce"
+#old_report = report_dir+"/"+old_commit+".xml"
+#new_report = report_dir+"/"+new_commit+".xml"
+#modified_files = git_diff.process_git_info(old_commit, new_commit, repo)
+#report_score = diff.get_pit_diff(old_commit, new_commit, repo, old_report, new_report, modified_files)
+#print report_score.str_changed()

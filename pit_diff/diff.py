@@ -50,18 +50,15 @@ def update_mutant(mutant, modified_files):
         mutant.line_no = target_to_source_dict[mutant.line_no].source_line_no
         return True
     
-    i = 0
-    while i < len(target_to_source_list) - 1 and mutant.line_no < target_to_source_list[i].target_line_no:
-        i += 1 
-    while i > 0 and target_to_source_list[i].target_line_no < mutant.line_no:
-        if target_to_source_list[i].source_line_no is None:
-            i -= 1 
-        else:
-            break
-    line = target_to_source_list[i]
-    if line.source_line_no is None:
-        #no update to take place
+    if mutant.line_no < target_to_source_list[0].target_line_no:
         return True
+        #no modification necessary - could be handled below, the first line of diff should be context and should retain its original source_line_no - edge case
+
+    i = 0
+    while i < len(target_to_source_list) - 1 and mutant.line_no > target_to_source_list[i].target_line_no:
+        i += 1 
+        #edge cases there should always be a context so no None types, also list can't be empty.
+    line = target_to_source_list[i]
     mutant.line_no = mutant.line_no + (line.source_line_no - line.target_line_no) 
     return True
 
@@ -105,11 +102,9 @@ def get_differences(old_report, new_report, report_name, modified_files):
             old_mutant = old_mutants[mutant.key()]
             if mutant.status != old_mutant.status or mutant.detected != old_mutant.detected:
                 score.update_changed(old_mutant, mutant, modified) 
-
             #translate old class/method names to new
             if old_mutant.name_key() not in name_map:
                 name_map[old_mutant.name_key()] = (mutant.mut_class, mutant.mut_method)
-
             del old_mutants[mutant.key()]
         else: #brand new mutant
             update_class_and_method_modified(score, mutant)

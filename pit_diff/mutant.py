@@ -37,6 +37,8 @@ class Mutant(object):
             return 4
         elif self.status == "run_error":
             return 5
+        elif self.status == "non_viable":
+            return 6
 
     def key(self):
         """
