@@ -46,6 +46,9 @@ class Mutation_score(object):
         #Use an 9 element array initialised to 0 translate the mutants to get index
         #don't care about time outs, memory or run errors
         self.changed = [0 for x in range(0,9)]
+        self.unchanged = Score("unchanged")
+        self.new = Score("new")
+        self.old = Score("old")
 
         self.parent = parent
         self.modified = False
@@ -56,6 +59,9 @@ class Mutation_score(object):
         if key not in self.children:
             self.children[key] = Class(key, self)
         return self.children[key]
+
+    def update_new(self, mutant):
+        self.new.update(mutant)
 
     def update_changed(self, old_mutant, mutant):
         #TODO: add check to see if indices are equal - there has been no change.
@@ -68,7 +74,6 @@ class Mutation_score(object):
         " killed " + str(self.changed[start + 2])
 
     def str_changed(self):
-        #TODO: create property method in mutant class returns a status given an index use in loop to build string - neater 
         return "no_coverage TO" + self.str_row_changed(0) + "\n" + \
         "survived TO" + self.str_row_changed(3) + "\n" + \
         "killed TO" + self.str_row_changed(6)
@@ -88,6 +93,9 @@ class Method_score(Mutation_score):
         Mutation_score.__init__(self, name, src_class, False)
         self.changed_mutants = None #append refs to changed mutants
 
+    def update_new(self, mutant):
+        Mutation_score.update_new(self, mutant)
+
     def update_changed(self, old_mutant, mutant):
         Mutation_score.update_changed(self, old_mutant, mutant)
         if self.changed_mutants is None:
@@ -100,6 +108,10 @@ class Class_score(Mutation_score):
     Store scores for new/changed mutants across a class.
     """
 
+    def update_new(self, mutant):
+        Mutation_score.update_new(self, mutant)
+        self.get_child(Method_score, mutant.mut_method).update_new(mutant)
+
     def update_changed(self, old_mutant, mutant):
         Mutation_score.update_changed(self, old_mutant, mutant)
         self.get_child(Method_score, mutant.mut_method).update_changed(old_mutant, mutant)
@@ -108,6 +120,11 @@ class File_score(Mutation_score):
     """
     Store scores for new/changed mutants across a source file..
     """
+
+    def update_new(self, mutant):
+        Mutation_score.update_new(self, mutant)
+        self.get_child(Class_score, mutant.mut_method).update_new(mutant)
+
     def update_changed(self, old_mutant, mutant, modified):
         self.modified = modified
         Mutation_score.update_changed(self, old_mutant, mutant)
@@ -119,6 +136,8 @@ class Report_score(Mutation_score):
     """
     #Can refactor so interface has attribute which can be the class type of the children
 
+    def update_new(self, mutant):
+        Mutation_score.update_new(self, mutant)
     def get_filename(self, mutant):
         """
         restore a new mutant's new snapshot file name to be used as a key in the score

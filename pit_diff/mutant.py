@@ -44,7 +44,7 @@ class Mutant(object):
         """
         Used as a key to uniquely determine a mutation.
         """
-        return self.source_file+str(self.line_no)+self.mutator
+        return self.source_file+str(self.line_no)+self.mutator+self.description
 
     def name_key(self):
         """

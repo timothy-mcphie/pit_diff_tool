@@ -88,7 +88,7 @@ def get_differences(old_report, new_report, report_name, modified_files):
     """
     Get the changed mutants between two mutation reports, if show_all is true, removed, unchanged and new mutants will be added to the score.
     """
-    score = Report_score(report_name, None)
+    score = Report_score(report_name, True)#were there any modifications to default this to True
     old_mutants = process_report(old_report)
     new_mutants = process_report(new_report)
     
@@ -156,6 +156,7 @@ def parse_class_method_score(report_score):
     return (modified_class, unmodified_class, modified_method, unmodified_method)
 
 def get_pit_diff(old_commit, new_commit, repo, old_report, new_report, modified_files):
+    #TODO:remove repo unecessary param
     """
     Entry point for getting difference between two pit reports
     NB it is the job of calling programs to check both repo and modified_files are not empty/uninitialised
